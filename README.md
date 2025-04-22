@@ -908,7 +908,7 @@ ansible-playbook main.yml --vault-password-file vault_pass.txt
 
 ---
 
-## 🎯 **আজকের লক্ষ্য:**
+## 🎯 **উদ্দেশ্য:**
 - Static vs Dynamic Inventory
 - Dynamic Inventory কী ও কেন দরকার
 - AWS EC2 Dynamic Inventory Example
@@ -1032,7 +1032,7 @@ ansible -i my_inventory.py all -m ping
 
 ---
 
-## 🎯 **আজকের লক্ষ্য:**
+## 🎯 **উদ্দেশ্য:**
 - CI/CD কীভাবে Ansible ব্যবহার করে
 - GitHub Actions থেকে Ansible চালানো
 - Jenkins থেকে Ansible job চালানো
@@ -1147,7 +1147,7 @@ ansible-playbook playbook.yml -i inventory.ini
 
 ---
 
-## 🎯 আজকের লক্ষ্য:
+## 🎯 উদ্দেশ্য:
 - একটি end-to-end real-life automation use case
 - Project structure কেমন হবে
 - Inventory + Variables + Roles + Playbook use
@@ -1285,6 +1285,144 @@ jobs:
       - run: pip install ansible
       - run: ansible-playbook -i inventory/production.ini playbook.yml --vault-password-file vault_pass.txt
 ```
+
+---
+
+# 📘  Docker Automation with Ansible
+
+---
+
+## 🎯 উদ্দেশ্য:
+- Docker install & configure with Ansible
+- Docker container deploy (nginx, redis etc.)
+- Custom Docker image build করা
+- Docker volume, network, env manage
+- বাস্তব উদাহরণ: Laravel অ্যাপ Docker container-এ deploy
+
+---
+
+## 🧰 1. প্রয়োজনীয়তা:
+- একটি Ubuntu Server (local/VM/cloud)
+- Ansible installed on control machine
+- Target server-এ SSH access
+
+---
+
+## 🧱 2. Project Structure:
+
+```bash
+docker-ansible/
+├── inventory.ini
+├── playbook.yml
+└── roles/
+    └── docker/
+        ├── tasks/
+        │   └── main.yml
+        └── templates/
+```
+
+---
+
+## 📄 3. Inventory File: `inventory.ini`
+
+```ini
+[servers]
+192.168.56.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+```
+
+---
+
+## 📝 4. Docker Role Task File: `roles/docker/tasks/main.yml`
+
+```yaml
+---
+- name: Install required packages
+  apt:
+    name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release]
+    update_cache: yes
+
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Install Docker
+  apt:
+    name: docker-ce
+    state: latest
+    update_cache: yes
+
+- name: Start and enable Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+```
+
+---
+
+## 🚀 5. Main Playbook: `playbook.yml`
+
+```yaml
+---
+- name: Install Docker on Remote Server
+  hosts: servers
+  become: yes
+
+  roles:
+    - docker
+```
+
+---
+
+## ▶️ 6. রান করুন:
+
+```bash
+ansible-playbook -i inventory.ini playbook.yml
+```
+
+---
+
+## 🧪 7. Practical Example: Run nginx container
+
+```yaml
+- name: Run Nginx Container
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Pull nginx image
+      docker_image:
+        name: nginx
+        source: pull
+
+    - name: Run nginx container
+      docker_container:
+        name: nginx_web
+        image: nginx
+        state: started
+        ports:
+          - "80:80"
+```
+
+✅ Save above in a new playbook `nginx.yml` and run it:
+```bash
+ansible-playbook -i inventory.ini nginx.yml
+```
+
+---
+
+## 💡 আরও Practical Ideas:
+| Use Case              | Module           | What it does                          |
+|-----------------------|------------------|---------------------------------------|
+| Run Redis container   | `docker_container` | Run redis in background               |
+| Build image from Dockerfile | `docker_image`    | Build custom Laravel app image        |
+| Volume mount         | `docker_container` | Mount data from host                  |
+| Docker Compose (later) | `community.docker.docker_compose` | Multi-container deployment           |
 
 ---
 
