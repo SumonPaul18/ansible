@@ -1,0 +1,145 @@
+---
+# এটি একটি Ansible প্লেবুক যা লক্ষ্য মেশিনে (192.168.0.94) SSH সক্ষম করে,
+# Ansible-এর জন্য কনফিগার করে এবং প্রয়োজনীয় পরিষেবাগুলি সেটআপ করে।
+
+# লক্ষ্য হোস্টগুলি এখানে সংজ্ঞায়িত করুন। আপনাকে 'inventory.ini' ফাইলে এই হোস্টগুলি সংজ্ঞায়িত করতে হবে।
+# উদাহরণস্বরূপ:
+# [target_servers]
+# 192.168.0.94 ansible_user=cloud3 ansible_ssh_private_key_file=~/.ssh/id_rsa
+- name: টার্গেট সার্ভারে SSH এবং প্রাথমিক কনফিগারেশন সেটআপ করুন
+  hosts: target_servers # আপনার inventory.ini ফাইলে সংজ্ঞায়িত হোস্ট গ্রুপ
+  become: yes           # এই টাস্কগুলি sudo প্রিভিলেজ সহ কার্যকর হবে
+
+  vars:
+    target_user: cloud3 # SSH এবং sudo অ্যাক্সেসের জন্য ব্যবহৃত ব্যবহারকারী
+    control_node_ip: 192.168.0.93 # কন্ট্রোল নোডের IP ঠিকানা, পিং পরীক্ষার জন্য
+
+  tasks:
+    - name: ১. সিস্টেম প্যাকেজ তালিকা আপডেট করুন
+      ansible.builtin.apt:
+        update_cache: yes
+        force_apt_get: yes # -y ফ্ল্যাগের মতো কাজ করে
+        cache_valid_time: 3600 # 1 ঘন্টা পরে ক্যাশে আপডেট হবে
+
+    - name: সিস্টেম প্যাকেজ আপগ্রেড করুন
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: প্রয়োজনীয় টুলস এবং OpenSSH সার্ভার ইনস্টল করুন
+      ansible.builtin.apt:
+        name:
+          - openssh-server
+          - net-tools
+          - curl
+          - wget
+          - git
+          - htop
+          - vim
+        state: present
+
+    - name: ২. SSH পরিষেবা সক্ষম এবং চালু করুন
+      ansible.builtin.systemd:
+        name: ssh
+        enabled: yes
+        state: started
+
+    - name: SSH পরিষেবার অবস্থা যাচাই করুন
+      ansible.builtin.command: systemctl status ssh
+      register: ssh_status
+      changed_when: false # এই কমান্ড সিস্টেমের অবস্থা পরিবর্তন করে না
+      # debug:
+      #   var: ssh_status.stdout_lines
+
+    - name: ৩. UFW (আনকমপ্লিকেটেড ফায়ারওয়াল) কনফিগার করুন
+      ansible.builtin.ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: UFW সক্ষম করুন
+      ansible.builtin.ufw:
+        state: enabled
+        # এটি কার্যকর করার আগে সতর্ক থাকুন, কারণ এটি SSH সংযোগ কেটে দিতে পারে
+        # যদি UFW নিয়মাবলী সঠিকভাবে সেট না করা হয়।
+
+    - name: UFW স্ট্যাটাস যাচাই করুন
+      ansible.builtin.command: ufw status verbose
+      register: ufw_status
+      changed_when: false
+      # debug:
+      #   var: ufw_status.stdout_lines
+
+    - name: ৪. Ansible-এর জন্য SSH কী-ভিত্তিক প্রমাণীকরণের জন্য .ssh ডিরেক্টরি প্রস্তুত করুন
+      ansible.builtin.file:
+        path: "/home/{{ target_user }}/.ssh"
+        state: directory
+        mode: '0700'
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+
+    - name: Ansible-এর জন্য authorized_keys ফাইল তৈরি করুন (যদি না থাকে)
+      ansible.builtin.file:
+        path: "/home/{{ target_user }}/.ssh/authorized_keys"
+        state: file
+        mode: '0600'
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+
+    - name: sshd_config ফাইল ব্যাকআপ করুন
+      ansible.builtin.copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.bak
+        remote_src: yes # উৎস ফাইলটি টার্গেট মেশিনে আছে
+
+    - name: sshd_config এ নিরাপত্তা এবং Ansible সামঞ্জস্যপূর্ণ সেটিংস পরিবর্তন করুন
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+        backup: no # যেহেতু আমরা ইতিমধ্যেই ব্যাকআপ নিয়েছি
+      loop:
+        - { regexp: '^PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^PasswordAuthentication', line: 'PasswordAuthentication yes' } # প্রাথমিক সেটআপের জন্য 'yes' রাখা হয়েছে
+        - { regexp: '^ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no' }
+        - { regexp: '^UsePAM', line: 'UsePAM no' } # কিছু ক্ষেত্রে 'yes' হতে পারে, Ansible এর জন্য 'no' সাধারণ
+        - { regexp: '^AllowAgentForwarding', line: 'AllowAgentForwarding yes' }
+        - { regexp: '^AllowTcpForwarding', line: 'AllowTcpForwarding yes' }
+        - { regexp: '^X11Forwarding', line: 'X11Forwarding yes' }
+        - { regexp: '^PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+        - { regexp: '^AuthorizedKeysFile', line: 'AuthorizedKeysFile .ssh/authorized_keys' }
+
+    - name: sshd_config পরিবর্তনের পর SSH পরিষেবা পুনরায় চালু করুন
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
+
+    - name: ৫. 'cloud3' ব্যবহারকারী বিদ্যমান কিনা যাচাই করুন অথবা তৈরি করুন
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        state: present
+        create_home: yes
+        shell: /bin/bash # ডিফল্ট শেল সেট করুন
+
+    - name: "ব্যবহারকারী '{{ target_user }}'-কে পাসওয়ার্ডবিহীন sudo অ্যাক্সেস দিন" # এখানে নাম এবং লাইন পরিবর্তন করা হয়েছে
+      ansible.builtin.lineinfile:
+        path: "/etc/sudoers.d/{{ target_user }}_nopasswd" # এখানে path-এ কোটেশন যোগ করা হয়েছে
+        line: "{{ target_user }} ALL=(ALL) NOPASSWD: ALL"
+        create: yes
+        mode: '0440'
+        owner: root
+        group: root
+        state: present
+
+    - name: ৬. নেটওয়ার্ক কনফিগারেশন যাচাই করুন (IP ঠিকানা)
+      ansible.builtin.shell: ip a show | grep "inet "
+      register: ip_output
+      changed_when: false
+      # debug:
+      #   var: ip_output.stdout_lines
+
+    - name: কন্ট্রোল নোডে পিং করে সংযোগ যাচাই করুন
+      ansible.builtin.command: "ping -c 3 {{ control_node_ip }}"
+      register: ping_check
+      changed_when: false
+      # debug:
+      #   var: ping_check.stdout.splitlines()
