@@ -1,13 +1,6 @@
-## Example of Ansible
-Here's a `README.md` file based on your Linux terminal history, covering Ansible installation, setup, configuration, and a practicing guide.
+## Ansible Lab Setup and Basic Usage
 
------
-
-# Ansible Lab Setup and Basic Usage
-
-This `README.md` details the steps taken to set up an Ansible control node and a managed node, along with a basic playbook example.
-
-## Table of Contents
+### Table of Contents
 
   - [Ansible Lab Setup and Basic Usage](https://www.google.com/search?q=%23ansible-lab-setup-and-basic-usage)
       - [Table of Contents](https://www.google.com/search?q=%23table-of-contents)
@@ -191,6 +184,8 @@ After running the playbook, log into the managed node (`192.168.0.91`) and verif
 ```bash
 ssh pd@192.168.0.91
 htop
+
+---
 exit
 ```
 
