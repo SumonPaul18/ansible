@@ -1,189 +1,385 @@
 ### Reference:
 - https://gemini.google.com/app/4d1db117c2616f46
 
-আপনার নিজের লিনাক্স মেশিনে Ansible ব্যবহার করে কিছু ইনস্টল, কনফিগার এবং সেটআপ করার ধারণাটি চমৎকার\! একে **লোকাল প্রভিশনিং (Local Provisioning)** বলা হয়। এটি বেশ কয়েকটি কারণে কার্যকর হতে পারে:
+Ansible-এ রিবুট হ্যান্ডলিং একটি অত্যন্ত গুরুত্বপূর্ণ বিষয়, বিশেষ করে যখন আপনি সার্ভার আপগ্রেড, কার্নেল আপডেট বা অন্যান্য কনফিগারেশন পরিবর্তন করছেন যার জন্য সিস্টেম রিস্টার্ট করা প্রয়োজন। এটি নিশ্চিত করে যে আপনার অটোমেশন প্রক্রিয়াটি রিবুটের পরেও নির্বিঘ্নে চলতে পারে।
 
-1.  **ব্যক্তিগত ডেভেলপমেন্ট এনভায়রনমেন্ট সেটআপ:** আপনার নিজের ল্যাপটপ বা ওয়ার্কস্টেশনে বিভিন্ন ডেভেলপমেন্ট টুল, ভাষা বা ফ্রেমওয়ার্ক স্বয়ংক্রিয়ভাবে সেটআপ করতে।
-2.  **সিস্টেম কনফিগারেশন ম্যানেজমেন্ট:** আপনার মেশিনের নির্দিষ্ট কনফিগারেশন ফাইল, সার্ভিস বা প্যাকেজগুলির স্টেট ট্র্যাক রাখতে এবং স্বয়ংক্রিয়ভাবে প্রয়োগ করতে।
-3.  **Ansible শেখার জন্য:** রিমোট মেশিন সেটআপ করার আগে Ansible কিভাবে কাজ করে তা নিজের মেশিনে পরীক্ষা করে দেখতে।
-4.  **পুনরাবৃত্তিমূলক সেটআপ:** নতুন ল্যাপটপ বা অপারেটিং সিস্টেম ইনস্টল করার সময় আপনার পছন্দের সফটওয়্যার এবং কনফিগারেশনগুলো দ্রুত প্রয়োগ করতে।
+চলুন, Ansible-এ রিবুট হ্যান্ডলিং সম্পর্কে একদম প্রাথমিক স্তর থেকে শুরু করে উচ্চ স্তরের কৌশল পর্যন্ত ধাপে ধাপে গাইডলাইন দেওয়া যাক।
 
-আপনার নিজের মেশিনে Ansible ব্যবহার করার জন্য আপনাকে যা করতে হবে:
+-----
 
-**ধাপ 1: Ansible ইনস্টল করুন**
+### **Ansible রিবুট হ্যান্ডলিং: প্রাথমিক স্তর থেকে উচ্চ স্তর পর্যন্ত গাইডলাইন**
 
-প্রথমে আপনার লিনাক্স মেশিনে Ansible ইনস্টল করুন। বেশিরভাগ লিনাক্স ডিস্ট্রিবিউশনের প্যাকেজ ম্যানেজারেই এটি পাওয়া যায়।
+**লক্ষ্য:** একটি Ansible প্লেবুক তৈরি করা যা প্রয়োজনীয় ক্ষেত্রে সিস্টেমকে রিবুট করবে এবং রিবুটের পরে প্লেবুকের বাকি কাজগুলো স্বয়ংক্রিয়ভাবে চালিয়ে যাবে।
 
-  * **Ubuntu/Debian-based:**
-    ```bash
-    sudo apt update
-    sudo apt install software-properties-common
-    sudo add-apt-repository --yes --update ppa:ansible/ansible
-    sudo apt install ansible
-    ```
-  * **CentOS/RHEL-based:**
-    ```bash
-    sudo yum install epel-release
-    sudo yum install ansible
-    # Or for newer versions:
-    # sudo dnf install ansible
-    ```
-  * **Arch Linux:**
-    ```bash
-    sudo pacman -S ansible
-    ```
-  * **Python pip ব্যবহার করে (যদি প্যাকেজ ম্যানেজার না থাকে বা নির্দিষ্ট সংস্করণ চান):**
-    ```bash
-    sudo apt install python3-pip # Or dnf/yum install python3-pip
-    pip3 install ansible
-    ```
-    (যদি `pip3 install ansible` ব্যবহার করেন, তবে নিশ্চিত করুন যে `~/.local/bin` আপনার PATH এ আছে: `export PATH=$PATH:$HOME/.local/bin`)
+-----
 
-ইনস্টলেশন যাচাই করতে:
+### **ধাপ 0: পূর্বশর্ত এবং মৌলিক ধারণা**
 
-```bash
-ansible --version
-```
+  * **Ansible ইনস্টলেশন:** আপনার কন্ট্রোল নোডে Ansible ইনস্টল করা থাকতে হবে।
+  * **ইনভেন্টরি ফাইল:** আপনার টার্গেট হোস্ট (যে মেশিন/সার্ভার রিবুট হবে) ইনভেন্টরি ফাইলে সংজ্ঞায়িত করা থাকতে হবে।
+      * উদাহরণ: `hosts.ini`
+        ```ini
+        [web_servers]
+        webserver1 ansible_host=your_server_ip ansible_user=your_ssh_user
+        ```
+  * **SSH অ্যাক্সেস:** কন্ট্রোল নোড থেকে টার্গেট হোস্টে SSH অ্যাক্সেস থাকতে হবে (পাসওয়ার্ড-লেস SSH কী প্রস্তাবিত)।
+  * **`become: yes`:** প্লেবুকে `become: yes` ব্যবহার করতে হবে যদি রিবুটের জন্য রুট প্রিভিলেজ (sudo) প্রয়োজন হয়।
 
-**ধাপ 2: ইনভেন্টরি ফাইল তৈরি করুন (Local Host)**
+-----
 
-Ansible কোন হোস্টের উপর কাজ করবে তা জানার জন্য একটি ইনভেন্টরি ফাইল ব্যবহার করে। নিজের মেশিনের জন্য, আপনি `localhost` ব্যবহার করবেন।
+### **ধাপ 1: মৌলিক রিবুট - `ansible.builtin.reboot` মডিউল ব্যবহার**
 
-একটি ফাইল তৈরি করুন, যেমন `hosts.ini`:
+এটি Ansible-এ রিবুট হ্যান্ডলিংয়ের সবচেয়ে প্রাথমিক এবং সহজ উপায়। `ansible.builtin.reboot` মডিউলটি সিস্টেমকে রিবুট করে এবং এটি পুনরায় অনলাইন না হওয়া পর্যন্ত Ansible অপেক্ষা করে।
 
-```ini
-# hosts.ini
-localhost ansible_connection=local
-```
-
-  * `localhost`: Ansible কে বলছে এটি আপনার নিজের মেশিন।
-  * `ansible_connection=local`: Ansible কে বলছে SSH ব্যবহার না করে সরাসরি আপনার লোকাল মেশিনের উপর কমান্ড চালাতে। এটি `sudo` ব্যবহার করে প্রিভিলেজ এসক্যালেশন পরিচালনা করবে।
-
-**ধাপ 3: একটি প্লেবুক তৈরি করুন**
-
-একটি প্লেবুক হল একটি YAML ফাইল যা আপনি কী করতে চান তা বর্ণনা করে। এটি টাস্কগুলির একটি সেট যা একটি নির্দিষ্ট হোস্ট গ্রুপে চালানো হবে।
-
-উদাহরণস্বরূপ, চলুন একটি প্লেবুক তৈরি করি যা আপনার সিস্টেমে `htop` (একটি প্রসেস মনিটর) ইনস্টল করবে, একটি কাস্টম বার্তা সহ একটি টেক্সট ফাইল তৈরি করবে এবং একটি Apache ওয়েব সার্ভার ইনস্টল ও চালু করবে।
-
-একটি ফাইল তৈরি করুন, যেমন `my_local_setup.yml`:
+**উদাহরণ প্লেবুক (`basic_reboot.yml`):**
 
 ```yaml
-# my_local_setup.yml
 ---
-- name: Setup my local Linux machine
-  hosts: localhost
-  become: yes # This allows Ansible to use sudo for privileged tasks
+- name: Perform a basic system reboot
+  hosts: web_servers # Replace with your host group
+  become: yes # Required for rebooting
 
   tasks:
-    - name: Ensure htop is installed
-      ansible.builtin.apt: # Or 'yum'/'dnf' for RHEL/CentOS
-        name: htop
-        state: present
-        update_cache: yes
-
-    - name: Create a custom message file
-      ansible.builtin.copy:
-        content: |
-          Hello from your Ansible-configured local machine!
-          This file was created by my_local_setup.yml playbook.
-        dest: /tmp/ansible_message.txt
-        owner: root
-        group: root
-        mode: '0644'
-
-    - name: Ensure Apache web server is installed
-      ansible.builtin.apt:
-        name: apache2 # Or 'httpd' for RHEL/CentOS
-        state: present
-
-    - name: Ensure Apache web server is running and enabled at boot
-      ansible.builtin.service:
-        name: apache2 # Or 'httpd' for RHEL/CentOS
-        state: started
-        enabled: yes
-
-    - name: Display a success message
+    - name: Display a message before reboot
       ansible.builtin.debug:
-        msg: "Local machine setup complete! Check /tmp/ansible_message.txt and your Apache web server."
+        msg: "System will now reboot. Ansible will wait for it to come back online."
+
+    - name: Initiate system reboot and wait for it to return
+      ansible.builtin.reboot:
+        reboot_timeout: 600 # Wait up to 10 minutes (600 seconds) for the system to come back
+        # Other optional parameters:
+        # post_reboot_delay: 10 # Wait 10 seconds after system is online before proceeding
+        # connect_timeout: 60 # SSH connection timeout after reboot
+        # test_command: "uptime" # A command to test if the system is fully up (optional, defaults to SSH check)
+
+    - name: Display a message after successful reboot
+      ansible.builtin.debug:
+        msg: "System has successfully rebooted and is online. Proceeding with next tasks."
+
+    - name: Example task after reboot
+      ansible.builtin.command: uptime
+      register: uptime_output
+    - ansible.builtin.debug:
+        msg: "System uptime after reboot: {{ uptime_output.stdout }}"
 ```
 
-**প্লেবুকের ব্যাখ্যা:**
-
-  * `---`: একটি YAML ফাইল শুরু নির্দেশ করে।
-  * `- name: Setup my local Linux machine`: এই প্লেবুকের একটি নাম।
-  * `hosts: localhost`: এই প্লেবুকটি `hosts.ini` ফাইলে সংজ্ঞায়িত `localhost` হোস্টের উপর চলবে।
-  * `become: yes`: এটি Ansible কে `sudo` ব্যবহার করতে বলে, যা প্যাকেজ ইনস্টল বা সার্ভিস ম্যানেজ করার মতো প্রিভিলেজড টাস্কের জন্য প্রয়োজন।
-  * `tasks:`: এটি টাস্কগুলির একটি তালিকা।
-      * `ansible.builtin.apt`: এটি একটি Ansible মডিউল যা Debian/Ubuntu সিস্টেমে প্যাকেজ ম্যানেজ করে। আপনি যদি CentOS/RHEL ব্যবহার করেন তবে এটি `ansible.builtin.yum` বা `ansible.builtin.dnf` হবে।
-          * `name: htop`: `htop` প্যাকেজ ইনস্টল করতে।
-          * `state: present`: নিশ্চিত করে যে প্যাকেজটি ইনস্টল করা আছে।
-          * `update_cache: yes`: প্যাকেজ ক্যাশে আপডেট করে।
-      * `ansible.builtin.copy`: একটি মডিউল যা ফাইল কপি বা তৈরি করে।
-          * `content`: ফাইলটির বিষয়বস্তু।
-          * `dest`: গন্তব্য পাথ।
-          * `owner`, `group`, `mode`: ফাইল পারমিশন সেট করে।
-      * `ansible.builtin.service`: একটি মডিউল যা সিস্টেম সার্ভিসগুলো ম্যানেজ করে।
-          * `state: started`: সার্ভিসটি চালু আছে তা নিশ্চিত করে।
-          * `enabled: yes`: সিস্টেম বুট হওয়ার সময় সার্ভিসটি স্বয়ংক্রিয়ভাবে চালু হয় তা নিশ্চিত করে।
-      * `ansible.builtin.debug`: কনসোল-এ মেসেজ প্রিন্ট করার জন্য।
-
-**ধাপ 4: প্লেবুক রান করুন**
-
-এখন আপনার ইনভেন্টরি ফাইল এবং প্লেবুক ব্যবহার করে Ansible রান করুন:
+**কিভাবে রান করবেন:**
 
 ```bash
-ansible-playbook -i hosts.ini my_local_setup.yml
+ansible-playbook -i hosts.ini basic_reboot.yml
 ```
 
-  * `ansible-playbook`: Ansible প্লেবুক রান করার কমান্ড।
-  * `-i hosts.ini`: আপনার ইনভেন্টরি ফাইল নির্দিষ্ট করে।
-  * `my_local_setup.yml`: আপনার প্লেবুক ফাইল নির্দিষ্ট করে।
+**ব্যাখ্যা:**
 
-**আউটপুট:**
+  * `ansible.builtin.reboot`: এই মডিউলটি রিবুট ট্রিগার করে।
+  * `reboot_timeout`: এটি সর্বাধিক সময় (সেকেন্ডে) যা Ansible রিবুট শেষ হওয়ার এবং টার্গেট হোস্টের সাথে পুনরায় সংযোগ স্থাপনের জন্য অপেক্ষা করবে। ডিফল্ট হল 600 সেকেন্ড (10 মিনিট)। যদি এই সময়ের মধ্যে সংযোগ স্থাপন না হয়, তাহলে টাস্কটি ব্যর্থ হবে।
+  * `post_reboot_delay`: রিবুট হওয়ার পর পুনরায় সংযোগ স্থাপন হলে, পরবর্তী টাস্ক শুরু করার আগে অতিরিক্ত কত সেকেন্ড অপেক্ষা করবে। এটি নিশ্চিত করে যে সিস্টেম পুরোপুরি স্থিতিশীল হয়েছে।
 
-Ansible টাস্কগুলো একের পর এক চালাবে এবং আপনাকে প্রতিটি টাস্কের স্ট্যাটাস দেখাবে (`changed`, `ok`, `failed`)।
+-----
 
-**ফলাফল যাচাই করুন:**
+### **ধাপ 2: শর্তসাপেক্ষে রিবুট - যখন প্রয়োজন হয় তখনই রিবুট**
 
-প্লেবুক রান হওয়ার পর:
+সাধারণত, আপনি তখনই রিবুট করতে চান যখন এটি প্রয়োজন হয় (যেমন কার্নেল আপডেট বা নির্দিষ্ট সার্ভিস আপডেটের পর)। এটি অপ্রয়োজনীয় রিবুট এড়িয়ে সময় বাঁচায়।
 
-  * `htop` ইনস্টল হয়েছে কিনা তা পরীক্ষা করুন: `htop` কমান্ড চালান।
-  * ফাইলটি তৈরি হয়েছে কিনা তা পরীক্ষা করুন: `cat /tmp/ansible_message.txt`
-  * Apache ওয়েব সার্ভার চলছে কিনা তা পরীক্ষা করুন: `sudo systemctl status apache2` (বা `httpd`) এবং আপনার ব্রাউজারে `http://localhost/` ভিজিট করুন।
+**লিনাক্সে রিবুট প্রয়োজনের চিহ্ন:**
 
-**রিবুট হ্যান্ডলিং (আপনার পূর্ববর্তী প্রশ্নের সাথে লিঙ্ক):**
+  * **`/var/run/reboot-required` ফাইল:** Debian/Ubuntu-ভিত্তিক সিস্টেমে প্যাকেজ আপডেটের পর যদি রিবুট প্রয়োজন হয়, তাহলে এই ফাইলটি তৈরি হয়।
+  * **`/var/run/reboot-required.pkgs` ফাইল:** এটিও Debian/Ubuntu তে, কোন প্যাকেজগুলোর জন্য রিবুট প্রয়োজন তা তালিকাভুক্ত করে।
+  * **নির্দিষ্ট প্যাকেজ ম্যানেজার কমান্ড:** কিছু ডিস্ট্রিবিউশনে প্যাকেজ ম্যানেজার রিবুটের প্রয়োজন আছে কিনা তা নির্দেশ করতে পারে (যেমন Red Hat-এ `needs-restarting -r`)।
 
-যদি আপনার প্লেবুকে এমন কোনো টাস্ক থাকে যা রিবুটের প্রয়োজন, যেমন কার্নেল আপডেট, তাহলে আপনি `reboot` মডিউল ব্যবহার করতে পারেন:
+**উদাহরণ প্লেবুক (`conditional_reboot.yml`):**
 
 ```yaml
-- name: Setup my local Linux machine
-  hosts: localhost
+---
+- name: Update system and reboot if necessary
+  hosts: web_servers
   become: yes
 
   tasks:
     - name: Update all packages that require reboot (e.g., kernel)
+      ansible.builtin.apt: # Use 'yum' or 'dnf' for RHEL/CentOS
+        upgrade: dist
+        update_cache: yes
+      register: apt_update_result # Register output to check for changes
+
+    - name: Check if /var/run/reboot-required file exists (Debian/Ubuntu)
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_required_file
+
+    # For RHEL/CentOS, you might use 'command: needs-restarting -r' and check its return code
+    # - name: Check if reboot is required (RHEL/CentOS)
+    #   ansible.builtin.command: needs-restarting -r
+    #   register: needs_restarting_result
+    #   changed_when: needs_restarting_result.rc != 0
+    #   failed_when: false # Don't fail if the command exits with non-zero
+
+    - name: Initiate system reboot if required
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+      when: reboot_required_file.stat.exists
+      # For RHEL/CentOS: when: needs_restarting_result.rc != 0
+
+    - name: Continue with post-reboot tasks
+      ansible.builtin.debug:
+        msg: "System is ready for post-reboot tasks."
+
+    - name: Install a package that should only be installed after potential reboot
+      ansible.builtin.apt:
+        name: sysstat # Example package
+        state: present
+```
+
+**ব্যাখ্যা:**
+
+  * `ansible.builtin.stat`: এই মডিউলটি একটি ফাইলের অবস্থা চেক করে। আমরা `/var/run/reboot-required` ফাইলটি বিদ্যমান আছে কিনা তা পরীক্ষা করছি।
+  * `register: reboot_required_file`: `stat` মডিউলের আউটপুট `reboot_required_file` ভেরিয়েবলে সংরক্ষণ করা হয়।
+  * `when: reboot_required_file.stat.exists`: `reboot` টাস্কটি তখনই চলবে যখন `reboot_required_file.stat.exists` সত্য হবে (অর্থাৎ, ফাইলটি বিদ্যমান)।
+  * RHEL/CentOS এর জন্য `needs-restarting -r` কমান্ড ব্যবহার করা হয়েছে, যা রিবুটের প্রয়োজন হলে একটি নন-জিরো এক্সিট কোড (`rc != 0`) দেয়।
+
+-----
+
+### **ধাপ 3: হ্যান্ডলার ব্যবহার করে রিবুট ট্রিগার করা (উন্নত)**
+
+হ্যান্ডলার (Handlers) হল Ansible-এর একটি শক্তিশালী ফিচার যা টাস্ক সম্পন্ন হওয়ার পরে চালানো হয়, যদি সেই টাস্কটি `changed` (কিছু পরিবর্তন) হয়ে থাকে এবং হ্যান্ডলারকে `notify` করা হয়। এটি নিশ্চিত করে যে রিবুটের মতো ব্যয়বহুল অপারেশন শুধুমাত্র তখনই ট্রিগার হয় যখন সত্যিই প্রয়োজন হয়।
+
+**উদাহরণ প্লেবুক (`reboot_with_handler.yml`):**
+
+```yaml
+---
+- name: Update system and reboot using a handler
+  hosts: web_servers
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+      changed_when: false # This task won't report "changed" unless it actually updates
+
+    - name: Upgrade all installed packages
+      ansible.builtin.apt:
+        upgrade: dist
+      notify: Check and reboot if necessary # This will trigger the handler if any packages are upgraded
+
+    - name: Install Nginx web server
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+      # This task will run BEFORE the handler, but the handler will run after all tasks are evaluated.
+
+  handlers:
+    - name: Check and reboot if necessary
+      ansible.builtin.debug:
+        msg: "Handler 'Check and reboot if necessary' is triggered. Checking for reboot-required file."
+
+    - name: Initiate system reboot (handler)
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+      # The 'when' condition makes sure the handler actually reboots only if the file exists
+      when: ansible_facts.default_ipv4.address is defined and '/var/run/reboot-required' in lookup('fileglob', '/var/run/reboot-required') # More robust check for handler
+      # OR, for simplicity: when: '/var/run/reboot-required' in lookup('fileglob', '/var/run/reboot-required')
+      # Note: 'ansible_facts' might not be fully populated immediately after reboot in some edge cases within handlers
+      # The fileglob lookup is a more direct way to check for the file's existence in handlers.
+```
+
+**কিভাবে রান করবেন:**
+
+```bash
+ansible-playbook -i hosts.ini reboot_with_handler.yml
+```
+
+**ব্যাখ্যা:**
+
+  * `notify: Check and reboot if necessary`: `upgrade: dist` টাস্কটি যদি কোনো প্যাকেজ আপগ্রেড করে (অর্থাৎ `changed` হয়), তাহলে এটি `Check and reboot if necessary` নামের হ্যান্ডলারকে ট্রিগার করবে।
+  * **হ্যান্ডলার্স (Handlers):** হ্যান্ডলারগুলি প্লেবুকের `tasks` সেকশনের সব টাস্ক চলার পর এবং `changed` টাস্ক দ্বারা `notify` হওয়ার পরই চলে। এর মানে হল, যদি আপনি একাধিক টাস্ক থেকে একটি হ্যান্ডলারকে `notify` করেন, তবে হ্যান্ডলারটি একবারই রান করবে।
+  * হ্যান্ডলারে `when` কন্ডিশন যোগ করা হয়েছে যাতে এটি শুধুমাত্র তখনই রিবুট করে যখন `/var/run/reboot-required` ফাইলটি আসলেই বিদ্যমান থাকে। এটি অতিরিক্ত সুরক্ষা স্তর যোগ করে।
+  * **গুরুত্বপূর্ণ:** হ্যান্ডলারের মধ্যে `/var/run/reboot-required` এর অস্তিত্ব পরীক্ষা করার জন্য `lookup('fileglob', '/var/run/reboot-required')` ব্যবহার করা হয়েছে। হ্যান্ডলারের মধ্যে `ansible_facts` সম্পূর্ণরূপে রিফ্রেশ না হওয়ার সম্ভাব্য সমস্যার জন্য এটি আরও নির্ভরযোগ্য।
+
+-----
+
+### **ধাপ 4: রিবুটের পরে ভিন্ন টাস্ক সেট - ফ্লেক্সিবল ওয়ার্কফ্লো (উচ্চ স্তরের কৌশল)**
+
+কিছু পরিস্থিতিতে, আপনি রিবুটের আগে এক সেট টাস্ক চালাতে চান এবং রিবুটের পরে অন্য সেট টাস্ক চালাতে চান। এটি অর্জন করতে আপনি একাধিক প্লেবুক বা একই প্লেবুকের মধ্যে লজিক ব্যবহার করতে পারেন।
+
+**কৌশল 1: দুটি পৃথক প্লেবুক ব্যবহার (ম্যানুয়াল বা কাস্টম স্ক্রিপ্ট দিয়ে চেইন করা)**
+
+  * **`pre_reboot_tasks.yml`:** রিবুটের আগে চালানো হবে এমন টাস্ক।
+  * **`post_reboot_tasks.yml`:** রিবুটের পরে চালানো হবে এমন টাস্ক।
+
+<!-- end list -->
+
+```yaml
+# pre_reboot_tasks.yml
+---
+- name: Pre-reboot setup
+  hosts: web_servers
+  become: yes
+  tasks:
+    - name: Apply critical updates
+      ansible.builtin.apt:
+        upgrade: dist
+      notify: Request reboot
+
+  handlers:
+    - name: Request reboot
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+      # You might want to save a flag file here if you need to know later that a reboot happened
+      # - name: Mark reboot requested
+      #   ansible.builtin.copy:
+      #     content: "reboot_requested\n"
+      #     dest: /tmp/reboot_flag.txt
+      #     mode: '0600'
+```
+
+```yaml
+# post_reboot_tasks.yml
+---
+- name: Post-reboot setup
+  hosts: web_servers
+  become: yes
+  tasks:
+    - name: Ensure specific services are running after reboot
+      ansible.builtin.service:
+        name: my_application_service
+        state: started
+        enabled: yes
+
+    - name: Final configurations
+      ansible.builtin.copy:
+        src: files/post_reboot_config.conf
+        dest: /etc/my_app/config.conf
+```
+
+**কিভাবে রান করবেন:**
+
+1.  `ansible-playbook -i hosts.ini pre_reboot_tasks.yml`
+2.  Ansible রিবুট শেষ হওয়ার জন্য অপেক্ষা করবে।
+3.  ম্যানুয়ালি বা একটি কাস্টম স্ক্রিপ্ট দিয়ে, `ansible-playbook -i hosts.ini post_reboot_tasks.yml` চালান।
+
+**কৌশল 2: একই প্লেবুকের মধ্যে লজিক (উচ্চ স্তরের)**
+
+এই কৌশলটি `ansible.builtin.meta: end_play` বা কাস্টম ফ্ল্যাগ ফাইল (যেমন পূর্বে আলোচনা করা হয়েছিল) ব্যবহার করে রিবুটের পরে প্লেবুকের বাকি অংশ কার্যকর করা নিশ্চিত করে।
+
+**উদাহরণ প্লেবুক (`advanced_reboot_workflow.yml`):**
+
+```yaml
+---
+- name: Stage 1: Pre-reboot tasks and reboot if necessary
+  hosts: web_servers
+  become: yes
+  vars:
+    # A flag to check if the playbook has already run up to the reboot point
+    reboot_flag_file: "/tmp/ansible_reboot_in_progress"
+
+  tasks:
+    - name: Check if playbook is continuing after a reboot
+      ansible.builtin.stat:
+        path: "{{ reboot_flag_file }}"
+      register: reboot_flag_status
+
+    - name: Skip pre-reboot tasks if flag file exists
+      ansible.builtin.meta: end_play # Stop this play
+      when: reboot_flag_status.stat.exists # If flag exists, we are in post-reboot phase
+
+    - name: Initial system update (Stage 1)
       ansible.builtin.apt:
         upgrade: dist
         update_cache: yes
       register: apt_update_result
 
-    - name: Check if reboot is required after apt upgrade
-      ansible.builtin.stat:
-        path: /var/run/reboot-required
-      register: reboot_required_file
+    - name: Create reboot flag file if update changed something
+      ansible.builtin.copy:
+        content: "rebooting\n"
+        dest: "{{ reboot_flag_file }}"
+        mode: '0600'
+      when: apt_update_result.changed
 
-    - name: Reboot if required
+    - name: Initiate system reboot (Stage 1.5)
       ansible.builtin.reboot:
-        reboot_timeout: 600 # Wait up to 10 minutes for reboot
-      when: reboot_required_file.stat.exists
+        reboot_timeout: 600
+      when: apt_update_result.changed # Only reboot if updates were actually applied
 
-    - name: Continue with post-reboot tasks (e.g., install specific software)
+# --- This marks the start of the post-reboot phase in the SAME PLAYBOOK ---
+- name: Stage 2: Post-reboot tasks
+  hosts: web_servers
+  become: yes
+  vars:
+    reboot_flag_file: "/tmp/ansible_reboot_in_progress" # Same flag file as above
+
+  pre_tasks: # Tasks to run before roles or main tasks
+    - name: Remove reboot flag file
+      ansible.builtin.file:
+        path: "{{ reboot_flag_file }}"
+        state: absent
+      # Only remove the flag if it exists, meaning we've successfully passed the reboot point
+      # This task is critical to ensure the playbook doesn't re-run pre-reboot tasks next time
+
+  tasks:
+    - name: Install and configure post-reboot software
       ansible.builtin.apt:
-        name: my-post-reboot-software
+        name:
+          - docker.io
+          - docker-compose
         state: present
-      # This task will only run after the potential reboot
+
+    - name: Add current user to docker group
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Final cleanup
+      ansible.builtin.apt:
+        autoremove: yes
+      when: True # Always run, assuming we are post-reboot
+
+    - name: Verify setup
+      ansible.builtin.debug:
+        msg: "Setup complete! Docker installed and user {{ ansible_user }} added to docker group."
 ```
 
-এই প্লেবুকটি `apt` আপগ্রেড করার পর `/var/run/reboot-required` ফাইলটি চেক করবে। যদি ফাইলটি বিদ্যমান থাকে, তাহলে `ansible.builtin.reboot` মডিউলটি মেশিনকে রিবুট করবে এবং মেশিনটি আবার অনলাইনে না আসা পর্যন্ত Ansible অপেক্ষা করবে, তারপর প্লেবুকের বাকি টাস্কগুলো (যেমন `my-post-reboot-software` ইনস্টল করা) চালানো শুরু করবে।
+**কিভাবে রান করবেন:**
 
-এভাবে আপনি আপনার নিজের লিনাক্স মেশিনে Ansible ব্যবহার করে স্বয়ংক্রিয়ভাবে বিভিন্ন ইনস্টলেশন, কনফিগারেশন এবং সেটআপ টাস্ক সম্পন্ন করতে পারেন।
+```bash
+ansible-playbook -i hosts.ini advanced_reboot_workflow.yml
+```
+
+**ব্যাখ্যা:**
+
+  * **দুটি প্লে (Play):** এই প্লেবুকে দুটি ভিন্ন `play` রয়েছে। প্রথম প্লেটি রিবুটের আগে কাজ করে, এবং দ্বিতীয় প্লেটি রিবুটের পরে কাজ করে।
+  * `reboot_flag_file`: একটি টেম্পোরারি ফ্ল্যাগ ফাইল যা নির্দেশ করে যে রিবুট প্রক্রিয়া চলছে এবং প্লেবুকটি রিবুটের পরে পুনরায় শুরু হচ্ছে।
+  * `meta: end_play`: এটি একটি বিশেষ Ansible মডিউল যা বর্তমান প্লেটি বন্ধ করে দেয়।
+      * প্রথম প্লেতে, যদি `reboot_flag_file` বিদ্যমান থাকে (যার অর্থ আমরা ইতিমধ্যে একবার রান করে রিবুটের পরে ফিরে এসেছি), তবে `end_play` টাস্কটি ট্রিগার হবে এবং প্রথম প্লেটি শেষ হয়ে যাবে। এরপর দ্বিতীয় প্লে শুরু হবে।
+      * যদি `reboot_flag_file` বিদ্যমান না থাকে, তবে প্রথম প্লেটি তার সব টাস্ক চালাবে, প্রয়োজন হলে রিবুট করবে এবং `reboot_flag_file` তৈরি করবে।
+  * **রিবুটের পর:** যখন সিস্টেম রিবুট হয় এবং আপনি আবার প্লেবুকটি চালান (ম্যানুয়ালি বা `systemd` এর মাধ্যমে), তখন প্রথম প্লেটি `reboot_flag_file` খুঁজে পাবে এবং `meta: end_play` দ্বারা স্কিপ হয়ে যাবে।
+  * **দ্বিতীয় প্লে (`pre_tasks`):** দ্বিতীয় প্লেটি শুরু হবে এবং `pre_tasks` সেকশনে প্রথমে `reboot_flag_file` মুছে ফেলবে। এটি অত্যন্ত গুরুত্বপূর্ণ, কারণ এটি নিশ্চিত করে যে পরেরবার প্লেবুকটি আবার শুরু হলে এটি আবার প্রথম প্লে থেকে শুরু হবে (যদি আপনি আবার শুরু করতে চান)।
+  * এরপরে দ্বিতীয় প্লেয়ের বাকি টাস্কগুলো চলবে।
+
+**এই উন্নত কৌশলটি নিশ্চিত করে যে:**
+
+  * প্লেবুকটি রিবুটের আগে এবং পরে ভিন্ন ভিন্ন লজিক চালাতে পারে।
+  * রিবুটের পরে, প্লেবুক স্বয়ংক্রিয়ভাবে সঠিক ধাপে চলে যাবে।
+  * এটি একটি শক্তিশালী এবং ফ্লেক্সিবল পদ্ধতি যা জটিল ওয়ার্কফ্লোর জন্য ব্যবহৃত হয়।
+
+-----
+
+### **গুরুত্বপূর্ণ বিবেচনা এবং সেরা অভ্যাস:**
+
+  * **Idempotence:** নিশ্চিত করুন যে আপনার টাস্কগুলি Idempotent। অর্থাৎ, একই টাস্ক বারবার চালালেও সিস্টেমের অবস্থা কাঙ্ক্ষিত অবস্থায়ই থাকবে এবং অপ্রয়োজনীয় পরিবর্তন হবে না। Ansible মডিউলগুলি সাধারণত Idempotent হয়।
+  * **Error Handling:** নেটওয়ার্ক সমস্যা, SSH সমস্যা, বা টাস্ক ব্যর্থ হলে কিভাবে হ্যান্ডেল করবেন তা বিবেচনা করুন। `ignore_errors` বা `block/rescue` ব্যবহার করতে পারেন।
+  * **SSH Connection Timeout:** রিবুটের পর `ansible.builtin.reboot` মডিউলের `reboot_timeout` পর্যাপ্ত বড় রাখুন। খুব বেশি ছোট হলে সংযোগ পুনরায় স্থাপন হওয়ার আগেই টাইমআউট হতে পারে।
+  * **Persistent Connections (Optional):** যদি আপনার ঘন ঘন রিবুট করার প্রয়োজন হয় এবং SSH সংযোগের পারফরম্যান্স গুরুত্বপূর্ণ হয়, তবে `ansible.cfg` এ `control_path` বা `control_master` সেট করে SSH Persistent Connections ব্যবহার করতে পারেন।
+  * **লগিং:** `ansible.cfg` এ লগিং সেটআপ করুন যাতে আপনি প্রতিটি রান এবং রিবুট ইভেন্টের লগ দেখতে পারেন।
+  * **Testing:** ছোট পরিবেশে পুঙ্খানুপুঙ্খভাবে আপনার রিবুট লজিক পরীক্ষা করুন, যাতে প্রোডাকশন সিস্টেমে কোনো অপ্রত্যাশিত আচরণ না হয়।
+  * **`systemd` সার্ভিস দিয়ে স্বয়ংক্রিয়ভাবে প্লেবুক পুনরায় শুরু:** যদি আপনি চান যে সিস্টেম রিবুট হওয়ার পরে প্লেবুকটি স্বয়ংক্রিয়ভাবে পুনরায় শুরু হোক (বিশেষ করে যদি এটি রিবুটের সময় মাঝপথে থেমে যায়), তাহলে আপনি পূর্বে আলোচনা করা `systemd` সার্ভিস পদ্ধতি ব্যবহার করতে পারেন। `ExecStart` কমান্ডে আপনার `ansible-playbook` কমান্ডটি রাখুন।
+    ```ini
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/bin/ansible-playbook -i /path/to/hosts.ini /path/to/my_playbook.yml
+    RemainAfterExit=yes
+    ```
+    এবং `my_playbook.yml` ফাইলটি `advanced_reboot_workflow.yml` এর মতো করে তৈরি করুন যা তার নিজের অবস্থা ট্র্যাক করে।
+
+এই গাইডলাইনগুলো আপনাকে Ansible-এ রিবুট হ্যান্ডলিংয়ের বিভিন্ন স্তর এবং কৌশল বুঝতে সাহায্য করবে। আপনার নির্দিষ্ট প্রয়োজনের উপর ভিত্তি করে সঠিক পদ্ধতি নির্বাচন করুন।
