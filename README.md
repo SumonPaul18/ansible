@@ -739,7 +739,7 @@ handlers:
 ```
 ---
 
-# Day 6 — Templates (Jinja2) — বিশদ ও বাস্তব উদাহরণ (Bengali)
+## Templates (Jinja2) — বিশদ ও বাস্তব উদাহরণ 
 
 Ansible Templates (Jinja2) হলো Ansible-এ dynamic configuration তৈরি করার সবথেকে শক্তিশালী উপায়। নিচে পুরো কনসেপ্ট, সিনট্যাক্স, advanced টেকনিক, best practices, এবং NGINX-এর পূর্ণ উদাহরণসহ দেয়া হলো — যেন আপনি প্র্যাকটিক্যাল প্রজেক্টে একে সরাসরি ব্যবহার করতে পারেন।
 
