@@ -263,7 +263,7 @@ Output দেখতে এরকম হবে:
 ```
 
 ---
-## 🧠 **Ad-hoc Command কী?**
+## 🧠 **Ad-hoc Command Using**
 
 Ansible Playbook না লিখেই, একবারের জন্য সরাসরি command line থেকে command run করাকে বলা হয় **Ad-hoc Command**।
 
@@ -359,7 +359,7 @@ ansible web -i inventory -m setup
 
 ---
 
-## 🎓 **Bonus: Become root (sudo)**
+## 🎓 **--become: Become root (sudo) permission**
 
 যেসব module কাজ করতে root access লাগে, সেগুলোতে `--become` দিতে হয়।
 
@@ -369,7 +369,7 @@ ansible web -i inventory -m apt -a "name=htop state=present" --become
 
 ---
 
-## 🧠 **Playbook কী?**
+## 🧠 **Ansible Playbook Using**
 
 Ansible Playbook হলো YAML ফরম্যাটে লেখা ফাইল যেখানে একাধিক task define করা হয়, sequentially run করার জন্য।
 
@@ -481,7 +481,9 @@ ansible-playbook -i inventory nginx_setup.yml
 ```
 
 ---
-## 🧠 **Ansible Variable কী?**
+## **Ansible এর অ্যাডভান্সড ব্যবহার** <a id="ansible-এর-অ্যাডভান্সড-ব্যবহার"></a>
+
+## 🧠 **1. Ansible Variable Using**
 
 Variable হলো কোনো reusable value, যেমন: `server_port`, `user_name`, `package_name` ইত্যাদি।  
 Playbook বা inventory কে flexible করার জন্য এগুলো ব্যবহার করা হয়।
@@ -561,7 +563,7 @@ nginx_root: /var/www/html
 
 ---
 
-## 🧠 **Facts কী?**
+## 🧠 **2. Facts কী?**
 
 Ansible **automatically gather** করে যেকোনো host/server-এর hardware, software, OS, memory, IP address, CPU info ইত্যাদি।
 
@@ -592,7 +594,7 @@ ansible web -m setup
 
 ---
 
-## 🧠 **1. Conditionals in Ansible**
+## 🧠 **3. Conditionals in Ansible**
 
 যদি কোনো নির্দিষ্ট শর্ত থাকে, তাহলে সেই Task চলবে। না হলে skip করবে।
 
@@ -629,7 +631,7 @@ tasks:
 
 ---
 
-## 🔁 **2. Loops in Ansible**
+## 🔁 **4. Loops in Ansible**
 
 একটা task বারবার run করানো হয় **loops** দিয়ে।
 
@@ -677,7 +679,7 @@ loop:
 
 ---
 
-## 🛎️ **3. Handlers in Ansible**
+## 🛎️ **5. Handlers in Ansible**
 
 যখন কোনো Task "Changed" হয়, তখন এক বা একাধিক handler call করা হয়।
 
@@ -738,7 +740,7 @@ handlers:
 
 ---
 
-## 🧠 **Ansible Role কী?**
+## 🧠 **6. Ansible Role কী?**
 
 Role হলো Ansible-এর একটি best practice structure  
 👉 যা task, variable, template, file, handler — সবকিছুকে **modular & reusable** করে তোলে।
@@ -827,7 +829,7 @@ ansible-galaxy init roles/nginx_setup
 
 ---
 
-## 🎯 **Variable & Template Support**
+## 🎯 **7. Variable & Template Support**
 
 📁 `roles/nginx_setup/templates/nginx.conf.j2`:
 ```nginx
@@ -872,7 +874,7 @@ http_port: 80
 
 ---
 
-## 🧠 **Ansible Vault কী?**
+## 🧠 **8. Ansible Vault কী?**
 
 Ansible Vault ব্যবহার করে আপনি যেকোনো ফাইল (বিশেষ করে variables) কে encrypt করে রাখতে পারেন।  
 👉 যাতে কেউ YAML ফাইল খুললেও sensitive data না দেখতে পায়।
@@ -1117,7 +1119,7 @@ ansible -i my_inventory.py all -m ping
 
 ---
 
-# 📘 **Day 9: Ansible with CI/CD Pipelines (GitHub Actions & Jenkins)**
+# 📘 **9. Ansible with CI/CD Pipelines (GitHub Actions & Jenkins)**
 
 ---
 
