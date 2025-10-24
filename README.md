@@ -210,9 +210,13 @@ ansible --version
 ```
 ---
 
-## 🗂️ **Inventory ফাইল তৈরি করা (static inventory)**
+## 🗂️ **Custom Inventory ফাইল তৈরি করা (custom inventory)**
 
 একটি ফাইল তৈরি করুন `inventory` নামে:
+
+```
+nano inventory
+```
 
 ```ini
 [web]
@@ -225,7 +229,7 @@ ansible --version
 
 ---
 
-## 🔐 **Passwordless SSH Setup (local থেকে server-এ)**
+## 🔐 **Passwordless SSH Setup (ansible server থেকে Manage server-এ)**
 
 ### Step 1: SSH Keygen চালান:
 ```bash
@@ -255,8 +259,8 @@ Output দেখতে এরকম হবে:
     "changed": false,
     "ping": "pong"
 }
-```
 
+```
 
 ---
 ## 🧠 **Ad-hoc Command কী?**
