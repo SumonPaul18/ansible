@@ -255,6 +255,7 @@ ansible -i inventory web -m ping
 
 Output দেখতে এরকম হবে:
 ```json
+
 192.168.56.101 | SUCCESS => {
     "changed": false,
     "ping": "pong"
