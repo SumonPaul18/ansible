@@ -1,4 +1,4 @@
-# **Ansible: একটি বিস্তারিত গাইড (শূন্য থেকে নায়ক)**
+# **Ansible: Configuration Management Tools বিস্তারিত গাইড (শূন্য থেকে নায়ক)**
 
 ---
 
@@ -116,6 +116,8 @@ Ansible ব্যবহার করে **প্লেবুক** চালা�
 ### **Ubuntu এ**
 ```bash
 sudo apt update
+sudo apt install software-properties-common -y
+sudo add-apt-repository --yes --update ppa:ansible/ansible
 sudo apt install ansible -y
 ```
 
