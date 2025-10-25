@@ -1,0 +1,84 @@
+---
+- name: Ensure python3 is installed (required for Ansible)
+  raw: sudo apt update && sudo apt install -y python3
+  when: ansible_python_version is not defined
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+- name: Install essential packages
+  apt:
+    name:
+      - openssh-server
+      - net-tools
+      - curl
+      - wget
+      - git
+      - htop
+      - vim
+      - ufw
+    state: present
+  become: yes
+
+- name: Ensure user exists
+  user:
+    name: "{{ preflight_user }}"
+    shell: /bin/bash
+    create_home: yes
+  become: yes
+
+- name: Set up sudoers for passwordless sudo
+  copy:
+    content: "{{ preflight_user }} ALL=(ALL) NOPASSWD: ALL\n"
+    dest: "/etc/sudoers.d/{{ preflight_user }}_nopasswd"
+    owner: root
+    group: root
+    mode: '0440'
+  become: yes
+
+- name: Ensure .ssh directory exists
+  file:
+    path: "/home/{{ preflight_user }}/.ssh"
+    state: directory
+    owner: "{{ preflight_user }}"
+    group: "{{ preflight_user }}"
+    mode: '0700'
+
+- name: Add SSH public key for Ansible access
+  authorized_key:
+    user: "{{ preflight_user }}"
+    state: present
+    key: "{{ preflight_ssh_pubkey }}"
+  become: yes
+
+- name: Configure SSH daemon for security
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backup: yes
+  loop:
+    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+    - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+    - { regexp: '^#?AuthorizedKeysFile', line: 'AuthorizedKeysFile .ssh/authorized_keys' }
+    - { regexp: '^#?UsePAM', line: 'UsePAM yes' }
+  become: yes
+  notify: restart ssh
+
+#- name: Configure UFW to allow SSH
+#  ufw:
+#    rule: allow
+#    name: OpenSSH
+#  become: yes
+#  when: enable_ufw
+
+#- name: Enable and start UFW
+#  ufw:
+#    state: enabled
+#    policy: deny
+#  become: yes
+#  when: enable_ufw

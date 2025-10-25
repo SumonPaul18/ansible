@@ -1,0 +1,6 @@
+---
+- name: Prepare target nodes for Ansible management
+  hosts: target
+  become: yes
+  roles:
+    - preflight
