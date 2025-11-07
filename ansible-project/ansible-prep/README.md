@@ -41,8 +41,8 @@
 ### 1. রিপোজিটরি ক্লোন করুন
 
 ```bash
-git clone https://github.com/yourusername/ansible-pre-flight.git
-cd ansible-pre-flight
+git clone https://github.com/SumonPaul18/ansible.git
+cd ansible/ansible-project/ansible-prep
 ```
 
 ### 2. Ansible Control Node এ ইন্সটলেশন
