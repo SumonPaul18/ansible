@@ -1,0 +1,107 @@
+---
+# ───────────────────────────────────────
+# 📦 Ensure Python3 (minimal bootstrap)
+# ───────────────────────────────────────
+- name: Install python3 if missing (required for Ansible modules)
+  raw: sudo apt update && sudo apt install -y python3
+  when: ensure_python3 and (ansible_python_version is not defined)
+  become: yes
+
+# ───────────────────────────────────────
+# 📥 Install essential packages (optional)
+# ───────────────────────────────────────
+- name: Install essential packages
+  apt:
+    name: "{{ essential_packages }}"
+    state: present
+    update_cache: yes
+  when: install_essential_packages
+  become: yes
+
+# ───────────────────────────────────────
+# 👤 Ensure target user exists
+# ───────────────────────────────────────
+- name: Ensure user exists
+  user:
+    name: "{{ preflight_user }}"
+    shell: /bin/bash
+    create_home: yes
+  become: yes
+
+# ───────────────────────────────────────
+# 🔑 Set up SSH key-based access
+# ───────────────────────────────────────
+- name: Ensure .ssh directory exists
+  file:
+    path: "/home/{{ preflight_user }}/.ssh"
+    state: directory
+    owner: "{{ preflight_user }}"
+    group: "{{ preflight_user }}"
+    mode: '0700'
+
+- name: Add SSH public key for Ansible access
+  authorized_key:
+    user: "{{ preflight_user }}"
+    state: present
+    key: "{{ preflight_ssh_pubkey }}"
+
+# ───────────────────────────────────────
+# 🛡️ Configure sudo (optional)
+# ───────────────────────────────────────
+- name: Set up passwordless sudo for user
+  copy:
+    content: "{{ preflight_user }} ALL=(ALL) NOPASSWD: ALL\n"
+    dest: "/etc/sudoers.d/{{ preflight_user }}_nopasswd"
+    owner: root
+    group: root
+    mode: '0440'
+  when: enable_passwordless_sudo
+  become: yes
+
+# ───────────────────────────────────────
+# 🔐 Harden SSH config (optional password auth disable)
+# ───────────────────────────────────────
+- name: Configure SSH daemon securely
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backup: yes
+  loop:
+    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+    - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+    - { regexp: '^#?AuthorizedKeysFile', line: 'AuthorizedKeysFile .ssh/authorized_keys' }
+    - { regexp: '^#?UsePAM', line: 'UsePAM yes' }
+    - { regexp: '^#?PasswordAuthentication', line: "PasswordAuthentication {{ 'no' if disable_password_auth else 'yes' }}" }
+  notify: restart ssh
+  become: yes
+
+# ───────────────────────────────────────
+# 🧱 Configure UFW (optional)
+# ───────────────────────────────────────
+- name: Configure UFW rules
+  ufw:
+    rule: allow
+    name: "{{ item.name }}"
+    port: "{{ item.port | default(omit) }}"
+    proto: "{{ item.proto | default(omit) }}"
+  loop: "{{ ufw_rules }}"
+  when: configure_ufw
+  become: yes
+
+- name: Enable and start UFW
+  ufw:
+    state: enabled
+    policy: deny
+  when: configure_ufw
+  become: yes
+
+# ───────────────────────────────────────
+# 🔄 Handlers
+# ───────────────────────────────────────
+- name: Restart SSH service
+  systemd:
+    name: ssh
+    state: restarted
+  become: yes
+  listen: "restart ssh"

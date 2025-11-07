@@ -1,0 +1,37 @@
+# ───────────────────────────────────────
+# 🛠️  Preflight Playbook Configuration
+# ───────────────────────────────────────
+
+# 🔹 Target user to manage
+preflight_user: cloud3
+
+# 🔹 SSH public key (auto-loads from control node)
+preflight_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+# 🔹 Install packages? Set to false to skip
+install_essential_packages: true
+essential_packages:
+  - openssh-server
+  - net-tools
+  - curl
+  - wget
+  - git
+  - htop
+  - vim
+  # ➕ Add or remove packages here as needed
+
+# 🔹 Configure UFW?
+configure_ufw: false        # 👈 Set to true if you want UFW
+ufw_rules:
+  - name: OpenSSH
+  # ➕ Add more rules: e.g., { port: 80, proto: tcp }
+
+# 🔹 Enable passwordless sudo?
+enable_passwordless_sudo: true
+
+# 🔹 Disable password authentication after key setup?
+disable_password_auth: true
+
+# 🔹 Ensure python3 is installed (required for Ansible)?
+ensure_python3: true
+
