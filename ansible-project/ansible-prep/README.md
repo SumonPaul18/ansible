@@ -93,9 +93,9 @@ ansible-pre-flight/
 nano group_vars/all.yml
 ```
 - পরিবর্তন:
-  ```yaml
-  preflight_user: your_custom_user
-  ```
+```yaml
+preflight_user: your_custom_user
+```
 ### 2. **SSH Public Key পরিবর্তন করতে**
 
 - ফাইল: `group_vars/all.yml`
@@ -103,17 +103,17 @@ nano group_vars/all.yml
 nano group_vars/all.yml
 ```
 - ডিফল্ট: `~/.ssh/id_rsa.pub` (control node থেকে)
-  ```yaml
-  preflight_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
-  ```
+```yaml
+preflight_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+```
 -  অথবা সরাসরি স্ট্রিং দিন:
-  ```yaml
-  preflight_ssh_pubkey: "ssh-rsa AAAAB3NzaC1yc2E... user@host"
-  ```
+```yaml
+preflight_ssh_pubkey: "ssh-rsa AAAAB3NzaC1yc2E... user@host"
+```
 - অন্য কী ব্যবহার করতে চাইলে:
-  ```yaml
-  preflight_ssh_pubkey: "{{ lookup('file', '/path/to/your/key.pub') }}"
-  ```
+```yaml
+preflight_ssh_pubkey: "{{ lookup('file', '/path/to/your/key.pub') }}"
+```
 ### 3. **UFW বন্ধ রাখতে চাইলে**
 
 - ফাইল: `group_vars/all.yml`
@@ -121,9 +121,9 @@ nano group_vars/all.yml
 nano group_vars/all.yml
 ```
 - পরিবর্তন:
-  ```yaml
-  enable_ufw: false
-  ```
+```yaml
+enable_ufw: false
+```
 
 ### 4. **অতিরিক্ত পোর্ট অ্যালাউ করতে (Optional)**
 
@@ -132,14 +132,14 @@ nano group_vars/all.yml
 nano roles/preflight/tasks/main.yml
 ```
 - নতুন টাস্ক যোগ করুন:
-  ```yaml
-  - name: Allow additional ports in UFW
-    ufw:
-      rule: allow
-      port: "{{ item }}"
-    loop: [80, 443, 8080]
-    when: enable_ufw
-  ```
+```yaml
+- name: Allow additional ports in UFW
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+  loop: [80, 443, 8080]
+  when: enable_ufw
+```
 
 ---
 
@@ -186,15 +186,15 @@ preflight_ssh_pubkey: "{{ lookup('file', '/path/to/your/custom_key.pub') }}"
 nano inventory.ini
 ```
 - উদাহরণ:
-  ```ini
-  [target]
-  192.168.0.52
+```ini
+[target]
+192.168.0.52
 
-  [target:vars]
-  ansible_user=cloud3
-  ansible_ssh_pass=YourPasswordHere
-  ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-  ```
+[target:vars]
+ansible_user=cloud3
+ansible_ssh_pass=YourPasswordHere
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+```
 
 > **বিস্তারিত বর্ণনা**:
 > - `[target]`: টার্গেট হোস্টগুলো এখানে লেখা হয়। একাধিক হোস্ট লেখা যাবে এক কলামে।
