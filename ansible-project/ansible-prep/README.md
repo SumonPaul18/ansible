@@ -1,3 +1,6 @@
+
+---
+
 # 🚀 Ansible Pre-flight Playbook
 
 > **টার্গেট নোডগুলোকে স্বয়ংক্রিয়ভাবে প্রস্তুত করুন Ansible ম্যানেজমেন্টের জন্য**
@@ -86,6 +89,9 @@ ansible-pre-flight/
 
 ### 1. **ইউজার নাম পরিবর্তন করতে**
 - ফাইল: `group_vars/all.yml`
+```
+nano group_vars/all.yml
+```
 - পরিবর্তন:
   ```yaml
   preflight_user: your_custom_user
@@ -93,6 +99,9 @@ ansible-pre-flight/
 ### 2. **SSH Public Key পরিবর্তন করতে**
 
 - ফাইল: `group_vars/all.yml`
+```
+nano group_vars/all.yml
+```
 - ডিফল্ট: `~/.ssh/id_rsa.pub` (control node থেকে)
   ```yaml
   preflight_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
@@ -108,14 +117,20 @@ ansible-pre-flight/
 ### 3. **UFW বন্ধ রাখতে চাইলে**
 
 - ফাইল: `group_vars/all.yml`
+```
+nano group_vars/all.yml
+```
 - পরিবর্তন:
   ```yaml
   enable_ufw: false
   ```
 
-### 4. **অতিরিক্ত পোর্ট অ্যালাউ করতে**
+### 4. **অতিরিক্ত পোর্ট অ্যালাউ করতে (Optional)**
 
 - ফাইল: `roles/preflight/tasks/main.yml`
+```
+nano roles/preflight/tasks/main.yml
+```
 - নতুন টাস্ক যোগ করুন:
   ```yaml
   - name: Allow additional ports in UFW
@@ -134,14 +149,30 @@ ansible-pre-flight/
 
 ```bash
 ssh-keygen -t rsa -b 4096
-# পাসফ্রেজ ছাড়া রাখুন (যদি অটোমেশন চান)
 ```
+> পাসফ্রেজ ছাড়া রাখুন (যদি অটোমেশন চান)
 
 > **SSH Key ফাইল লোকেশন**:  
 > - Private Key: `~/.ssh/id_rsa`  
 > - Public Key: `~/.ssh/id_rsa.pub`  
 > 
 > এই playbook ডিফল্টভাবে `~/.ssh/id_rsa.pub` ফাইলটি ব্যবহার করবে।  
+- ফাইল: `group_vars/all.yml`
+```
+nano group_vars/all.yml
+```
+- ডিফল্ট: `~/.ssh/id_rsa.pub` (control node থেকে)
+    
+    ```yaml
+    preflight_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+    ```
+    
+- অথবা সরাসরি স্ট্রিং দিন:
+
+```yaml
+preflight_ssh_pubkey: "ssh-rsa AAAAB3NzaC1yc2E... user@host"
+```
+
 > আপনি যদি অন্য কী ব্যবহার করেন, তাহলে `group_vars/all.yml` এ ফাইল পাথ পরিবর্তন করুন:
 > ```yaml
 > preflight_ssh_pubkey: "{{ lookup('file', '/path/to/your/custom_key.pub') }}"
@@ -150,6 +181,9 @@ ssh-keygen -t rsa -b 4096
 ### 2. **Inventory কনফিগার করুন**
 
 - ফাইল: `inventory.ini`
+```
+nano inventory.ini
+```
 - উদাহরণ:
   ```ini
   [target]
