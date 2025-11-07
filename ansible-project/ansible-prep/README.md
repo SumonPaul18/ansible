@@ -150,22 +150,23 @@ nano roles/preflight/tasks/main.yml
 ```bash
 ssh-keygen -t rsa -b 4096
 ```
-> পাসফ্রেজ ছাড়া রাখুন (যদি অটোমেশন চান)
+- পাসফ্রেজ ছাড়া রাখুন (যদি অটোমেশন চান)
 
 > **SSH Key ফাইল লোকেশন**:  
 > - Private Key: `~/.ssh/id_rsa`  
 > - Public Key: `~/.ssh/id_rsa.pub`  
 > 
 > এই playbook ডিফল্টভাবে `~/.ssh/id_rsa.pub` ফাইলটি ব্যবহার করবে।  
+
 - ফাইল: `group_vars/all.yml`
 ```
 nano group_vars/all.yml
 ```
 - ডিফল্ট: `~/.ssh/id_rsa.pub` (control node থেকে)
     
-    ```yaml
-    preflight_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
-    ```
+```yaml
+preflight_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+```
     
 - অথবা সরাসরি স্ট্রিং দিন:
 
@@ -173,10 +174,10 @@ nano group_vars/all.yml
 preflight_ssh_pubkey: "ssh-rsa AAAAB3NzaC1yc2E... user@host"
 ```
 
-> আপনি যদি অন্য কী ব্যবহার করেন, তাহলে `group_vars/all.yml` এ ফাইল পাথ পরিবর্তন করুন:
-> ```yaml
-> preflight_ssh_pubkey: "{{ lookup('file', '/path/to/your/custom_key.pub') }}"
-> ```
+- আপনি যদি অন্য কী ব্যবহার করেন, তাহলে `group_vars/all.yml` এ ফাইল পাথ পরিবর্তন করুন:
+```yaml
+preflight_ssh_pubkey: "{{ lookup('file', '/path/to/your/custom_key.pub') }}"
+```
 
 ### 2. **Inventory কনফিগার করুন**
 
