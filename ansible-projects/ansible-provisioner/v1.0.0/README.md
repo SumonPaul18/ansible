@@ -519,7 +519,7 @@ Contributions are welcome! Please follow these steps:
 
 ## 👨‍💻 Author 
 
-<div align="center">
+<div align="left">
 
 **Sumon Paul**  
 🔧 DevOps Engineer | Cloud & Infrastructure Automation  
