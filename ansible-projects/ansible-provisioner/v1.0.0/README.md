@@ -68,12 +68,15 @@ Before you begin, ensure:
 ### Install Ansible (Ubuntu/Debian)
 
 #### Update system packages
+```
 sudo apt update && sudo apt upgrade -y
-
+```
 #### Install Ansible
+```
 sudo apt install ansible -y
-
+```
 #### Verify installation
+```
 ansible --version
 ansible-playbook --version
 ```
