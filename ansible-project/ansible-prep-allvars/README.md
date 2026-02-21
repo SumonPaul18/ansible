@@ -172,6 +172,3 @@ ssh root@192.168.0.94 "useradd -m -s /bin/bash cloud3 && echo 'cloud3:temp123' |
 তারপর playbook রান করুন।
 
 ---
-
-এই স্ট্রাকচার আপনার **8+ বছরের DevOps/Cloud অভিজ্ঞতার** সাথে পুরোপুরি ম্যাচ করবে — সহজ, নমনীয়, এবং পুনঃব্যবহারযোগ্য।  
-চাইলে এটিকে **GitHub template** বা **Ansible Collection** হিসেবেও প্যাকেজ করে দিতে পারি।
