@@ -197,6 +197,9 @@ cd ansible-projects/ansible-provisioner/v1.0.0/
 
 ### Step 2: Configure Inventory
 Edit `inventory.ini` with your target server details:
+```
+nano inventory.ini
+```
 ```ini
 [target_servers]
 192.168.0.63 ansible_user=cloud3
@@ -205,23 +208,27 @@ Edit `inventory.ini` with your target server details:
 ```
 
 ### Step 3: Configure SSH Access
-```bash
-# Generate SSH key (if not already done)
+
+Generate SSH key (if not already done)
+```
 ssh-keygen -t ed25519 -C "ansible-control"
-
-# Copy public key to target node
+```
+Copy public key to target node
+```
 ssh-copy-id cloud3@192.168.0.63
-
-# Test passwordless SSH
+```
+Test passwordless SSH
+```
 ssh cloud3@192.168.0.63 "echo 'SSH connection successful!'"
 ```
 
 ### Step 4: Verify Ansible Connectivity
-```bash
-# Test connection to all hosts
+Test connection to all hosts
+```
 ansible all -m ping
-
-# Expected output:
+```
+Expected output:
+```
 # 192.168.0.63 | SUCCESS => {
 #     "changed": false,
 #     "ping": "pong"
@@ -247,9 +254,7 @@ Run with Extra Variables
 Override defaults at runtime:
 
 ```bash
-ansible-playbook -i inventory.ini setup_server.yaml \
-
--e "target_user=admin control_node_ip=192.168.0.93"
+ansible-playbook -i inventory.ini setup_server.yaml -e "target_user=admin control_node_ip=192.168.0.93"
 ```
 Dry Run (Check Mode)
 
@@ -267,7 +272,6 @@ ansible-playbook -i inventory.ini setup_server.yaml --limit 192.168.0.63
 After running `setup_server.yaml`, verify:
 
   
-
 | Check | Command | Expected Result |
 
 |-------|---------|----------------|
@@ -281,6 +285,7 @@ After running `setup_server.yaml`, verify:
 | Tools Installed | `which htop curl git` | Paths returned for each |
 
 | SSH Config | `sudo grep -E "PermitRootLogin|PasswordAuth" /etc/ssh/sshd_config` | `PermitRootLogin no`, `PasswordAuthentication yes` (or `no` if hardened) |
+
 ```bash
 # Check if htop is installed
 ansible target_servers -a "which htop"
