@@ -1,0 +1,403 @@
+# 🚀 Ansible Playbook: অটোমেটিক Static IP Configuration for Any Linux
+
+এই গাইডলাইনটি **সম্পূর্ণ অটোমেটিক** এবং **সব ধরনের Linux ডিস্ট্রিবিউশন ও ভার্সন**-এর জন্য কাজ করবে।  
+✅ অটোমেটিক ইন্টারফেস ডিটেকশন  
+✅ ম্যানুয়াল ইন্টারফেস অপশন  
+✅ ডিস্ট্রিবিউশন ও ভার্সন অনুযায়ী কনফিগারেশন (Debian/Ubuntu: `interfaces`, `netplan`; RHEL/CentOS: `network-scripts`, `NetworkManager`)
+
+---
+
+## 📌 প্রয়োজনীয় শর্তাবলী
+
+- Ansible 2.9+ (Control Node)
+- Target Node-এ Python 3.x
+- SSH key-based authentication
+
+---
+
+## 📁 প্রজেক্ট স্ট্রাকচার
+
+```
+ansible-static-ip-advanced/
+├── inventory
+├── group_vars/
+│   └── all.yml
+├── roles/
+│   └── static_ip/
+│       ├── tasks/
+│       │   ├── main.yml
+│       │   ├── detect_interface.yml
+│       │   ├── ubuntu_netplan.yml
+│       │   ├── ubuntu_interfaces.yml
+│       │   ├── rhel_network_scripts.yml
+│       │   └── rhel_nmcli.yml
+│       ├── templates/
+│       │   ├── netplan_config.yaml.j2
+│       │   ├── interfaces.j2
+│       │   └── ifcfg.j2
+│       └── handlers/
+│           └── main.yml
+└── site.yml
+```
+
+---
+
+## 📄 1. Inventory ফাইল (`inventory`)
+
+```ini
+[linux_servers]
+server1 ansible_host=192.168.1.50 ansible_user=ubuntu
+server2 ansible_host=192.168.1.51 ansible_user=centos
+
+# ম্যানুয়াল ইন্টারফেস সেট করতে চাইলে:
+# server3 ansible_host=192.168.1.52 ansible_user=root network_interface=eth1
+```
+
+---
+
+## 📦 2. গ্লোবাল ভেরিয়েবল (`group_vars/all.yml`)
+
+```yaml
+---
+# ডিফল্ট নেটওয়ার্ক সেটিংস
+static_ip: "192.168.1.100"
+netmask: "255.255.255.0"
+gateway: "192.168.1.1"
+dns_servers:
+  - "8.8.8.8"
+  - "8.8.4.4"
+
+# ম্যানুয়াল ইন্টারফেস নাম (খালি রাখলে অটো ডিটেক্ট হবে)
+# network_interface: ""  # ডিফল্ট খালি
+```
+
+---
+
+## 🧠 3. মেইন টাস্ক (`roles/static_ip/tasks/main.yml`)
+
+```yaml
+---
+- name: Detect primary network interface if not provided
+  include_tasks: detect_interface.yml
+  when: network_interface is not defined or network_interface == ""
+
+- name: Set interface fact if manually provided
+  set_fact:
+    detected_interface: "{{ network_interface }}"
+  when: network_interface is defined and network_interface != ""
+
+- name: Configure Static IP for Ubuntu/Debian (Netplan - Ubuntu 18.04+)
+  include_tasks: ubuntu_netplan.yml
+  when:
+    - ansible_os_family == "Debian"
+    - (ansible_distribution == "Ubuntu" and ansible_distribution_version is version('18.04', '>='))
+    - (ansible_distribution == "Debian" and ansible_distribution_version is version('10', '>='))
+
+- name: Configure Static IP for Ubuntu/Debian (Legacy /etc/network/interfaces)
+  include_tasks: ubuntu_interfaces.yml
+  when:
+    - ansible_os_family == "Debian"
+    - not ( (ansible_distribution == "Ubuntu" and ansible_distribution_version is version('18.04', '>=')) or
+            (ansible_distribution == "Debian" and ansible_distribution_version is version('10', '>=')) )
+
+- name: Configure Static IP for RHEL/CentOS (NetworkManager via nmcli - RHEL 8+/CentOS 8+)
+  include_tasks: rhel_nmcli.yml
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_version is version('8', '>=')
+
+- name: Configure Static IP for RHEL/CentOS (Legacy network-scripts - RHEL 7/CentOS 7)
+  include_tasks: rhel_network_scripts.yml
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_version is version('8', '<')
+```
+
+---
+
+## 🔍 4. ইন্টারফেস ডিটেকশন (`roles/static_ip/tasks/detect_interface.yml`)
+
+```yaml
+---
+- name: Get list of network interfaces (excluding lo, docker, etc.)
+  shell: |
+    ip -br link show up | grep -v 'lo\|docker\|veth\|br-\|virbr' | head -n1 | awk '{print $1}'
+  register: primary_interface
+  changed_when: false
+
+- name: Fail if no interface found
+  fail:
+    msg: "No valid network interface found!"
+  when: primary_interface.stdout == ""
+
+- name: Set detected interface fact
+  set_fact:
+    detected_interface: "{{ primary_interface.stdout }}"
+```
+
+---
+
+## 🌐 5. Ubuntu/Debian Netplan কনফিগারেশন (`roles/static_ip/tasks/ubuntu_netplan.yml`)
+
+```yaml
+---
+- name: Find existing Netplan config files
+  find:
+    paths: /etc/netplan
+    patterns: "*.yaml"
+  register: netplan_configs
+
+- name: Set Netplan config file path
+  set_fact:
+    netplan_file: "{{ netplan_configs.files[0].path if netplan_configs.matched > 0 else '/etc/netplan/01-static-ip.yaml' }}"
+
+- name: Backup existing Netplan config
+  copy:
+    src: "{{ netplan_file }}"
+    dest: "{{ netplan_file }}.backup_{{ ansible_date_time.iso8601 }}"
+    remote_src: yes
+  when: netplan_configs.matched > 0
+
+- name: Deploy Netplan configuration
+  template:
+    src: netplan_config.yaml.j2
+    dest: "{{ netplan_file }}"
+    owner: root
+    group: root
+    mode: '0600'
+  notify: apply netplan
+
+- name: Disable cloud-init network config (if exists)
+  lineinfile:
+    path: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    line: "network: {config: disabled}"
+    create: yes
+  when: "'cloud-init' in ansible_facts.packages"
+```
+
+### Netplan টেমপ্লেট (`roles/static_ip/templates/netplan_config.yaml.j2`)
+
+```jinja2
+# Generated by Ansible
+network:
+  version: 2
+  ethernets:
+    {{ detected_interface }}:
+      dhcp4: no
+      addresses:
+        - {{ static_ip }}/24
+      gateway4: {{ gateway }}
+      nameservers:
+        addresses: {{ dns_servers }}
+```
+
+---
+
+## 📡 6. Legacy Ubuntu/Debian (`roles/static_ip/tasks/ubuntu_interfaces.yml`)
+
+```yaml
+---
+- name: Backup /etc/network/interfaces
+  copy:
+    src: /etc/network/interfaces
+    dest: /etc/network/interfaces.backup_{{ ansible_date_time.iso8601 }}
+    remote_src: yes
+
+- name: Configure /etc/network/interfaces
+  template:
+    src: interfaces.j2
+    dest: /etc/network/interfaces
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart networking
+```
+
+### টেমপ্লেট (`roles/static_ip/templates/interfaces.j2`)
+
+```jinja2
+auto lo
+iface lo inet loopback
+
+auto {{ detected_interface }}
+iface {{ detected_interface }} inet static
+    address {{ static_ip }}
+    netmask {{ netmask }}
+    gateway {{ gateway }}
+    dns-nameservers {% for dns in dns_servers %}{{ dns }}{% if not loop.last %} {% endif %}{% endfor %}
+```
+
+---
+
+## 🐧 7. RHEL/CentOS NetworkManager (`roles/static_ip/tasks/rhel_nmcli.yml`)
+
+```yaml
+---
+- name: Get current connection name for interface
+  shell: nmcli -g GENERAL.CONNECTION device show {{ detected_interface }}
+  register: current_conn
+  changed_when: false
+
+- name: Delete existing connection (if any)
+  command: nmcli con delete "{{ current_conn.stdout }}"
+  when: current_conn.stdout != ""
+  ignore_errors: yes
+
+- name: Create new static connection with nmcli
+  command: >
+    nmcli con add type ethernet con-name static-{{ detected_interface }}
+    ifname {{ detected_interface }}
+    ip4 {{ static_ip }}/24
+    gw4 {{ gateway }}
+  args:
+    creates: "/etc/sysconfig/network-scripts/ifcfg-static-{{ detected_interface }}"
+
+- name: Set DNS servers
+  command: nmcli con mod static-{{ detected_interface }} ipv4.dns "{{ dns_servers | join(' ') }}"
+
+- name: Bring up the connection
+  command: nmcli con up static-{{ detected_interface }}
+  notify: reload NetworkManager
+```
+
+---
+
+## 📶 8. Legacy RHEL/CentOS (`roles/static_ip/tasks/rhel_network_scripts.yml`)
+
+```yaml
+---
+- name: Backup existing ifcfg file
+  copy:
+    src: "/etc/sysconfig/network-scripts/ifcfg-{{ detected_interface }}"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ detected_interface }}.backup_{{ ansible_date_time.iso8601 }}"
+    remote_src: yes
+  ignore_errors: yes
+
+- name: Configure ifcfg file
+  template:
+    src: ifcfg.j2
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ detected_interface }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart network
+```
+
+### টেমপ্লেট (`roles/static_ip/templates/ifcfg.j2`)
+
+```jinja2
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=static
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+NAME={{ detected_interface }}
+DEVICE={{ detected_interface }}
+ONBOOT=yes
+IPADDR={{ static_ip }}
+NETMASK={{ netmask }}
+GATEWAY={{ gateway }}
+DNS1={{ dns_servers[0] }}
+{% if dns_servers[1] is defined %}
+DNS2={{ dns_servers[1] }}
+{% endif %}
+```
+
+---
+
+## 🔁 9. Handlers (`roles/static_ip/handlers/main.yml`)
+
+```yaml
+---
+- name: apply netplan
+  command: netplan apply
+
+- name: restart networking
+  service:
+    name: networking
+    state: restarted
+
+- name: restart network
+  service:
+    name: network
+    state: restarted
+
+- name: reload NetworkManager
+  systemd:
+    name: NetworkManager
+    state: reloaded
+```
+
+---
+
+## 🎯 10. Playbook (`site.yml`)
+
+```yaml
+---
+- name: Advanced Static IP Configuration for Any Linux
+  hosts: linux_servers
+  become: yes
+  gather_facts: yes
+  roles:
+    - static_ip
+```
+
+---
+
+## ▶️ ব্যবহারের নির্দেশাবলী
+
+### অটোমেটিক মোড (সবচেয়ে সহজ):
+```bash
+ansible-playbook -i inventory site.yml
+```
+
+### ম্যানুয়াল ইন্টারফেস সহ:
+```bash
+ansible-playbook -i inventory site.yml -e "network_interface=eth1"
+```
+
+### প্রতি হোস্টে আলাদা ইন্টারফেস:
+```ini
+# inventory
+server1 ansible_host=192.168.1.50 network_interface=ens192
+server2 ansible_host=192.168.1.51 network_interface=enp0s3
+```
+
+---
+
+## ✅ সমর্থিত সিস্টেম
+
+| ডিস্ট্রিবিউশন | ভার্সন | মেথড |
+|----------------|--------|--------|
+| Ubuntu | 18.04+ | Netplan |
+| Ubuntu | <18.04 | `/etc/network/interfaces` |
+| Debian | 10+ | Netplan |
+| Debian | <10 | `/etc/network/interfaces` |
+| CentOS/RHEL | 8+ | NetworkManager (nmcli) |
+| CentOS/RHEL | 7 | network-scripts |
+| Rocky/AlmaLinux | 8+ | NetworkManager |
+
+---
+
+## ⚠️ সতর্কতা
+
+1. **প্রথমে টেস্ট করুন**: প্রোডাকশনের আগে ভার্চুয়াল মেশিনে টেস্ট করুন
+2. **কনসোল অ্যাক্সেস**: নেটওয়ার্ক কনফিগারেশন ভুল হলে SSH ডিসকানেক্ট হতে পারে
+3. **Cloud Instances**: AWS/GCP/Azure-এ `cloud-init` বন্ধ করা থাকলে ভালো
+
+---
+
+## 📊 ডিবাগিং টিপস
+
+- `ansible -i inventory linux_servers -m setup -a "filter=ansible_distribution*"` → OS info
+- `ansible -i inventory linux_servers -m shell -a "ip a"` → Interface info
+- Playbook-এ `-vvv` ফ্ল্যাগ ব্যবহার করুন ডিটেইলড আউটপুটের জন্য
+
+---
+
+✅ **এখন আপনার Ansible playbook সম্পূর্ণ অটোমেটিক, স্মার্ট এবং যেকোনো Linux সিস্টেমে কাজ করবে!**
