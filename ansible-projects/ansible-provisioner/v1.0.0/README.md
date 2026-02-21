@@ -267,6 +267,7 @@ Target Specific Hosts
 ```bash
 ansible-playbook -i inventory.ini setup_server.yaml --limit 192.168.0.63
 ```
+
 ### Step 6: 🧪 Testing & Verification Checklist
 
 After running `setup_server.yaml`, verify:
@@ -300,6 +301,7 @@ ansible target_servers -a "ufw status verbose"
 
 # Verify sudo access for user
 ansible target_servers -a "sudo whoami" -b
+
 ```
 
 ---
