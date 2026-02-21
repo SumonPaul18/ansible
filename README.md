@@ -1,6 +1,6 @@
 # **Ansible: Configuration Management Tools বিস্তারিত গাইড**
 
-![Ansible Logo](.src/images/ansible-1.png)
+![Ansible Logo](./src/images/ansible-1.png)
 ---
 এই গাইডটি Ansible সম্পর্কে একটি বিস্তারিত বিবরণ দেয়, যা বেসিক থেকে অ্যাডভান্সড ব্যবহার পর্যন্ত সবকিছু কভার করে। এটি অনুসরণ করে Ansible এর সম্পূর্ণ সুবিধা নিতে পারবেন।
 ---
