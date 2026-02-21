@@ -286,6 +286,8 @@ After running `setup_server.yaml`, verify:
 
 | SSH Config | `sudo grep -E "PermitRootLogin|PasswordAuth" /etc/ssh/sshd_config` | `PermitRootLogin no`, `PasswordAuthentication yes` (or `no` if hardened) |
 
+---
+
 ```bash
 # Check if htop is installed
 ansible target_servers -a "which htop"
