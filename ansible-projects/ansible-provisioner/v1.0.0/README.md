@@ -1,7 +1,7 @@
 
-# 🚀 Ansible Provisioner
+# 🚀 Ansible Provisioner v1.0.0
 
-> **Automated server setup and configuration toolkit**  
+> **AAutomated Server Provisioning & Configuration with Ansible**  
 > *Prepare, secure, and manage Linux target nodes with Ansible — fast, repeatable, and production-ready.*
 
 [![Ansible](https://img.shields.io/badge/Ansible-2.9+-red.svg)](https://ansible.com)
@@ -12,7 +12,8 @@
 
 ## 🎯 Purpose
 
-This project automates the initial setup of Linux target servers using Ansible. It helps you:
+This repository contains Ansible playbooks and configurations for automated provisioning and configuration of target Linux servers.
+It helps you:
 
 - ✅ Provision SSH access and key-based authentication
 - ✅ Harden security with UFW firewall and SSH config
@@ -28,6 +29,56 @@ Ideal for:
 
 ---
 
+## ✨ Features
+
+| Feature                 | Description                                                 |
+| ----------------------- | ------------------------------------------------------------------- |
+| 🔐 SSH Hardening        | Configures secure SSH settings (key-based auth, disable root login) |
+| 🛡️ Firewall Setup      | Enables and configures UFW with essential rules                     |
+| 👤 User Management      | Creates users with passwordless sudo access                         |
+| 📦 Package Management   | Installs essential tools (htop, vim, git, curl, etc.)               |
+| 🔄 Idempotent Execution | Safe to run multiple times without side effects                     |
+| 🌐 Bilingual Docs       | Full documentation in English and Bangla                            |
+| ⚙️ Configurable         | Easy to modify inventory, variables, and tasks                      |
+
+---
+
+## ⚙️ Prerequisites
+
+Before you begin, ensure:
+
+### Control Node (Ansible Controller)
+```bash
+# ✅ Ubuntu/Debian-based system
+# ✅ Python 3.8+
+# ✅ Ansible 2.9+
+# ✅ SSH access to target nodes
+# ✅ sudo privileges on control node
+```
+
+### Target Nodes (Managed Servers)
+```bash
+# ✅ Ubuntu/Debian Linux (20.04 LTS recommended)
+# ✅ SSH server enabled
+# ✅ Python 3 installed (for Ansible modules)
+# ✅ Network connectivity from control node
+# ✅ User account with sudo privileges
+```
+
+### Install Ansible (Ubuntu/Debian)
+
+#### Update system packages
+sudo apt update && sudo apt upgrade -y
+
+#### Install Ansible
+sudo apt install ansible -y
+
+#### Verify installation
+ansible --version
+ansible-playbook --version
+```
+---
+
 ## 📁 Project Structure
 
 ```
@@ -39,274 +90,426 @@ ansible-target-provisioner-v1.0.0/
 ├── README.md              # This guide
 └── (optional) roles/      # Extend with reusable roles in future versions
 ```
-
 ---
 
-## ⚙️ Prerequisites
+## 📄 File Descriptions | ফাইল বিবরণ
 
-Before you begin, ensure:
-
-| Requirement | Details |
-|-------------|---------|
-| **Control Node** | Linux/macOS with Python 3.8+ and Ansible 2.9+ installed |
-| **Target Nodes** | Ubuntu/Debian-based Linux servers with SSH access |
-| **SSH Key** | Generated key pair (`~/.ssh/id_rsa`) on control node |
-| **Network** | Control node can reach target nodes via IP/hostname |
-
-### Install Ansible (Ubuntu/Debian)
-```bash
-sudo apt update && sudo apt install ansible -y
-ansible --version  # Verify installation
-```
-
-### Generate SSH Key (if not already done)
-```bash
-ssh-keygen -t ed25519 -C "ansible-control"
-# Press Enter for defaults (no passphrase for automation)
-```
-
----
-
-## 🚀 Quick Start Guide
-
-### 1️⃣ Clone the Repository
-```bash
-git clone https://github.com/SumonPaul18/ansible.git
-cd ansible/ansible-target-provisioner-v1.0.0
-```
-
-### 2️⃣ Configure Your Inventory
-Edit `inventory.ini` to match your environment:
+### 1️⃣ `inventory.ini`
 ```ini
 [target_servers]
-192.168.0.63 ansible_user=cloud3 ansible_ssh_private_key_file=~/.ssh/id_rsa
-# Add more servers like:
-# 192.168.0.64 ansible_user=admin
-# web-servers:
-#   hosts:
-#     192.168.0.100:
-#     192.168.0.101:
+192.168.0.63 ansible_user=cloud3
 ```
+| Property | Description |
+|----------|-------------|
+| **Purpose** | Defines target hosts and connection parameters |
+| **Modify When** | Adding new servers, changing SSH user, or using custom SSH keys |
+| **Key Fields** | `ansible_user`, `ansible_ssh_private_key_file`, `ansible_port` |
 
-### 3️⃣ Copy SSH Key to Target (One-Time Setup)
-```bash
-ssh-copy-id -i ~/.ssh/id_rsa.pub cloud3@192.168.0.63
-```
+> 💡 **Tip**: For multiple hosts, add each on a new line under the group name.
 
-### 4️⃣ Test Connectivity
-```bash
-ansible all -i inventory.ini -m ping
-# Expected output:
-# 192.168.0.63 | SUCCESS => { "changed": false, "ping": "pong" }
-```
-
-### 5️⃣ Run the Main Provisioning Playbook
-```bash
-ansible-playbook -i inventory.ini setup_server.yaml
-```
-
-### 6️⃣ (Optional) Run Demo Playbook: Install htop
-```bash
-# ⚠️ First, update install_htop.yml to use 'target_servers' instead of 'paulco-desk'
-ansible-playbook -i inventory.ini install_htop.yml
-```
-
-### 7️⃣ Verify on Target Node
-```bash
-ssh cloud3@192.168.0.63
-htop          # Should launch successfully
-sudo ufw status  # Should show firewall active with OpenSSH allowed
-exit
-```
-
----
-
-## 📄 File Descriptions & Customization Guide
-
-### 🔹 `inventory.ini`
-**Purpose**: Lists target servers and connection details.  
-**Key fields**:
-- `ansible_user`: SSH username on target
-- `ansible_ssh_private_key_file`: Path to your private key
-- Group names (e.g., `[target_servers]`) used in playbooks
-
-✅ **Modify when**: Adding/removing servers, changing users, or using password auth.
-
----
-
-### 🔹 `ansible.cfg`
-**Purpose**: Sets Ansible defaults for this project.  
-**Critical settings**:
+### 2️⃣ `ansible.cfg`
 ```ini
 [defaults]
-inventory = ./inventory.ini          # Auto-loads your inventory
-remote_user = pd                     # Fallback SSH user
-host_key_checking = False            # ⚠️ Disable for labs; ENABLE in production!
+inventory = ./inventory.ini
+remote_user = pd
+host_key_checking = False
 ansible_private_key_file = ~/.ssh/id_rsa
 
 [privilege_escalation]
-become = True                        # Auto-use sudo
+become = True
 become_method = sudo
 become_user = root
+become_ask_pass = False
 ```
+| Section | Purpose |
+|---------|---------|
+| `[defaults]` | Global Ansible behavior settings |
+| `[privilege_escalation]` | Controls sudo/elevation behavior |
 
-✅ **Modify when**: Changing SSH user, enabling host key checking, or adjusting parallelism (`forks`).
+> ⚠️ **Warning**: `host_key_checking = False` is for lab use only. Enable in production!
 
----
-
-### 🔹 `install_htop.yml` (Demo Playbook)
-**Purpose**: Simple example to install a single package.  
-**Current issue**: Targets `paulco-desk` — update to match your inventory group:
+### 3️⃣ `install_htop.yml` (Demo Playbook)
 ```yaml
-# Before:
-hosts: paulco-desk
+---
+- name: Install htop on managed node
+  hosts: paulco-desk
+  become: yes
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+    - name: Install htop package
+      ansible.builtin.apt:
+        name: htop
+        state: present
+```
+| Use Case | Description |
+|----------|-------------|
+| 🧪 Learning | Understand basic playbook structure |
+| 🧪 Testing | Verify Ansible connectivity and sudo access |
+| 🧪 Template | Base for creating new simple task playbooks |
 
-# After (recommended):
-hosts: target_servers
+### 4️⃣ `setup_server.yaml` (Main Playbook) 🚀
+A comprehensive playbook that performs:
+
+```yaml
+✅ System update & upgrade
+✅ Install essential packages (openssh-server, net-tools, curl, wget, git, htop, vim)
+✅ Enable & start SSH service
+✅ Configure UFW firewall (allow OpenSSH)
+✅ Prepare SSH key authentication (~/.ssh directory, authorized_keys)
+✅ Harden sshd_config (disable root login, enable pubkey auth)
+✅ Create/manage target user with passwordless sudo
+✅ Network connectivity verification
 ```
 
-✅ **Use for**: Learning playbook syntax, testing connectivity, or quick package deployment.
+| Section | Tasks Covered |
+|---------|--------------|
+| 🔧 System Prep | apt update, upgrade, package installation |
+| 🔐 SSH Setup | Service enablement, config hardening, key auth |
+| 🛡️ Security | UFW configuration, sshd security settings |
+| 👤 User Mgmt | User creation, sudoers configuration |
+| 🌐 Verification | IP check, ping test to control node |
 
 ---
 
-### 🔹 `setup_server.yaml` (Main Playbook)
-**Purpose**: Full server provisioning workflow.  
-**Key tasks**:
-1. 🔄 Update & upgrade system packages
-2. 🔐 Install & configure OpenSSH + essential tools
-3. 🛡️ Enable UFW firewall with SSH access
-4. 🔑 Prepare `~/.ssh` and `authorized_keys` for key-based auth
-5. ⚙️ Harden `sshd_config` (disable root login, enable pubkey auth)
-6. 👤 Ensure `cloud3` user exists with passwordless `sudo`
-7. 🌐 Validate network connectivity (IP check + ping to control node)
+## 🚀 Quick Start | দ্রুত শুরু
 
-✅ **Customize by editing**:
-- `vars:` section → Change `target_user`, `control_node_ip`
-- Package list in `apt: name:` → Add/remove tools
-- `lineinfile` loops → Adjust SSH security policies
-- Firewall rules → Open additional ports (e.g., `80`, `443`)
+### Step 1: Clone the Repository
 
-💡 **Pro Tip**: Uncomment `debug:` blocks to see task outputs during testing.
+ Clone via HTTPS
+```
+git clone https://github.com/SumonPaul18/ansible.git
+```
+Show Directory List
+```
+ll
+```
+ Navigate to project directory
+```
+cd ansible-projects/ansible-provisioner/v1.0.0/
+```
 
----
+### Step 2: Configure Inventory
+Edit `inventory.ini` with your target server details:
+```ini
+[target_servers]
+192.168.0.63 ansible_user=cloud3
+# Add more servers as needed:
+# 192.168.0.64 ansible_user=admin ansible_port=2222
+```
 
-## 🔧 Advanced Configuration
+### Step 3: Configure SSH Access
+```bash
+# Generate SSH key (if not already done)
+ssh-keygen -t ed25519 -C "ansible-control"
 
-### Run with Extra Variables
+# Copy public key to target node
+ssh-copy-id cloud3@192.168.0.63
+
+# Test passwordless SSH
+ssh cloud3@192.168.0.63 "echo 'SSH connection successful!'"
+```
+
+### Step 4: Verify Ansible Connectivity
+```bash
+# Test connection to all hosts
+ansible all -m ping
+
+# Expected output:
+# 192.168.0.63 | SUCCESS => {
+#     "changed": false,
+#     "ping": "pong"
+# }
+```
+
+### Step 5: Run the Main Playbook
+
+Execute server setup playbook
+```
+ansible-playbook setup_server.yaml
+```
+ Run with verbose output for debugging
+```
+ansible-playbook setup_server.yaml -v
+```
+ Run with extra verbosity (show task details)
+```
+ansible-playbook setup_server.yaml -vvv
+```
+Run with Extra Variables
+
 Override defaults at runtime:
+
 ```bash
 ansible-playbook -i inventory.ini setup_server.yaml \
-  -e "target_user=admin control_node_ip=192.168.0.93"
-```
 
-### Dry Run (Check Mode)
+-e "target_user=admin control_node_ip=192.168.0.93"
+```
+Dry Run (Check Mode)
+
 See what *would* change without applying:
+
 ```bash
 ansible-playbook -i inventory.ini setup_server.yaml --check
 ```
-
-### Target Specific Hosts
+Target Specific Hosts
 ```bash
 ansible-playbook -i inventory.ini setup_server.yaml --limit 192.168.0.63
 ```
-
-### Verbose Output for Debugging
-```bash
-ansible-playbook -i inventory.ini setup_server.yaml -vvv
-```
-
----
-
-## 🧪 Testing & Verification Checklist
+### Step 6: 🧪 Testing & Verification Checklist
 
 After running `setup_server.yaml`, verify:
 
+  
+
 | Check | Command | Expected Result |
+
 |-------|---------|----------------|
+
 | SSH Access | `ssh cloud3@192.168.0.63` | Login without password |
+
 | Sudo Access | `sudo whoami` | Returns `root` |
+
 | Firewall | `sudo ufw status` | `Status: active`, `OpenSSH ALLOW` |
+
 | Tools Installed | `which htop curl git` | Paths returned for each |
+
 | SSH Config | `sudo grep -E "PermitRootLogin|PasswordAuth" /etc/ssh/sshd_config` | `PermitRootLogin no`, `PasswordAuthentication yes` (or `no` if hardened) |
+```bash
+# Check if htop is installed
+ansible target_servers -a "which htop"
+
+# Check SSH service status
+ansible target_servers -a "systemctl status ssh"
+
+# Check UFW status
+ansible target_servers -a "ufw status verbose"
+
+# Verify sudo access for user
+ansible target_servers -a "sudo whoami" -b
+```
 
 ---
+## ⚙️ Configuration Guide | কনফিগারেশন গাইড
 
-## 🛠️ Troubleshooting
+### 🔧 Customizing Variables
+Edit `setup_server.yaml` vars section:
+```yaml
+vars:
+  target_user: cloud3              # Change to your desired username
+  control_node_ip: 192.168.0.93    # Update with your control node IP
+```
 
-| Issue | Solution |
-|-------|----------|
-| ❌ `UNREACHABLE!` | Check IP, SSH key, firewall, and `ansible_user` in `inventory.ini` |
-| ❌ `Permission denied` | Ensure `become: yes` and user has `sudo` rights |
-| ❌ `Failed to update apt cache` | Run `sudo apt update` manually on target first |
-| ❌ SSH connection hangs | Temporarily set `host_key_checking = False` in `ansible.cfg` |
-| ❌ Playbook syntax error | Validate with `ansible-playbook --syntax-check playbook.yml` |
+### 🔐 SSH Key Configuration
+If using a custom SSH key:
+```ini
+# In inventory.ini
+192.168.0.63 ansible_user=cloud3 ansible_ssh_private_key_file=~/.ssh/custom_key
 
-🔍 **Enable debug output**: Uncomment `debug:` tasks in `setup_server.yaml` to inspect variables.
+# OR in ansible.cfg
+ansible_private_key_file = ~/.ssh/custom_key
+```
 
+### 🌐 Multi-Environment Setup
+Use group_vars for environment-specific configurations:
+```
+group_vars/
+├── production.yml    # Production server settings
+├── staging.yml       # Staging server settings
+└── development.yml   # Dev/Lab server settings
+```
+
+Example `group_vars/production.yml`:
+```yaml
 ---
+# Production-specific variables
+security_level: high
+enable_auditd: true
+backup_enabled: true
+```
 
-## 🤝 Contributing
+### 🔄 Running Specific Tasks Only
+```bash
+# List all tasks without executing
+ansible-playbook setup_server.yaml --list-tasks
 
-Contributions welcome! To propose improvements:
-1. Fork the repo
-2. Create a feature branch: `git checkout -b feat/your-idea`
-3. Commit changes with clear messages
-4. Push and open a Pull Request
+# Run only tasks tagged 'ssh'
+ansible-playbook setup_server.yaml --tags ssh
 
-💡 Ideas: Add roles for Docker/Nginx, support RHEL/CentOS, add Molecule tests.
+# Skip tasks tagged 'firewall'
+ansible-playbook setup_server.yaml --skip-tags firewall
 
----
-
-## 📜 License
-
-Distributed under the **MIT License**. See `LICENSE` for details.  
-*Free to use, modify, and distribute — even in commercial projects.*
-
----
-
-## 🙏 Acknowledgements
-
-- Built with ❤️ for the DevOps community
-- Inspired by Ansible best practices and idempotent design
-- Special thanks to contributors testing in home labs & production
-
-> 🌟 **Pro Tip**: Always test playbooks in a staging environment before production deployment!
-
----
-
-*Made by [Sumon Paul](https://github.com/SumonPaul18) • [Report Issue](https://github.com/SumonPaul18/ansible/issues)*
+# Start from a specific task
+ansible-playbook setup_server.yaml --start-at-task="Configure UFW"
 ```
 
 ---
 
-## ✅ Why This README Works
+## 🧪 Usage Examples | ব্যবহারের উদাহরণ
 
-| Feature | Benefit |
-|---------|---------|
-| 🎯 Clear purpose statement | Instantly tells users *what* and *why* |
-| 📁 Visual project tree | Helps navigate files quickly |
-| 🚀 Step-by-step quick start | Reduces onboarding friction |
-| 🔧 Customization guidance | Empowers users to adapt safely |
-| 🧪 Verification checklist | Builds confidence in results |
-| 🛠️ Troubleshooting table | Saves time debugging common issues |
-| 🤝 Contributing + License | Encourages collaboration & compliance |
-| 🌐 Badges + emojis | Modern, scannable, professional look |
+### Example 1: Install a New Package
+```yaml
+# Add to setup_server.yaml or create new playbook
+- name: Install docker.io
+  ansible.builtin.apt:
+    name: docker.io
+    state: present
+    update_cache: yes
+```
+
+### Example 2: Deploy Configuration File
+```yaml
+- name: Deploy custom sshd_config
+  ansible.builtin.template:
+    src: templates/sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+  notify: Restart SSH
+```
+
+### Example 3: Conditional Execution
+```yaml
+- name: Install monitoring tools (only for production)
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - prometheus-node-exporter
+    - netdata
+  when: environment == "production"
+```
+
+### Example 4: Run Ad-hoc Commands
+```bash
+# Check disk usage on all targets
+ansible target_servers -a "df -h"
+
+# Restart a service
+ansible target_servers -m systemd -a "name=nginx state=restarted" -b
+
+# Gather system facts
+ansible target_servers -m setup | grep -i ansible_os_family
+```
 
 ---
 
-## ▶️ Next Steps for You
+## 🛠️ Troubleshooting | সমস্যা সমাধান
 
-1. Rename folder:  
-   ```bash
-   mv target-node-ready-v1.0.0 ansible-target-provisioner-v1.0.0
-   ```
-2. Replace `README.md` with the content above
-3. Fix `install_htop.yml`: change `hosts: paulco-desk` → `hosts: target_servers`
-4. Commit & push:
-   ```bash
-   git add .
-   git commit -m "docs: improve README + standardize folder name"
-   git push origin main
-   ```
+| Issue | Possible Cause | Solution |
+|-------|---------------|----------|
+| ❌ `UNREACHABLE!` | SSH connection failed | Verify IP, user, SSH key, and firewall rules |
+| ❌ `Authentication failed` | Wrong credentials or key | Check `ansible_user`, run `ssh-copy-id` again |
+| ❌ `Missing sudo password` | become_ask_pass=True | Set `become_ask_pass: False` or use SSH key for sudo |
+| ❌ `Module not found` | Python missing on target | Install Python: `sudo apt install python3-minimal` |
+| ❌ `Permission denied` | Insufficient privileges | Ensure user has sudo access with NOPASSWD |
+| ❌ Playbook runs but no changes | Idempotency working | Check `changed_when` and task conditions |
 
-Let me know if you'd like me to generate a Bengali version of this README for your tutorials or documentation! 🇧🇩✨
+### Debug Mode
+```bash
+# Enable debug output
+ansible-playbook setup_server.yaml -vvv
+
+# Test connection with detailed output
+ansible all -m ping -vvv
+
+# Check Ansible configuration
+ansible --version
+ansible-config dump --only-changed
+```
+
+### Common Fixes
+```bash
+# Fix SSH key permissions
+chmod 600 ~/.ssh/id_rsa
+chmod 644 ~/.ssh/id_rsa.pub
+
+# Reset known_hosts if host key changed
+ssh-keygen -R 192.168.0.63
+
+# Validate playbook syntax
+ansible-playbook setup_server.yaml --syntax-check
+
+# Test a single host
+ansible-playbook setup_server.yaml --limit 192.168.0.63
+```
+
+---
+
+## 🔒 Security Best Practices | নিরাপত্তা নির্দেশিকা
+
+### ✅ Do's
+```yaml
+# Use SSH keys instead of passwords
+# Store secrets in Ansible Vault
+# Limit sudo access to specific commands when possible
+# Regularly update Ansible and system packages
+# Use tags to control playbook execution scope
+```
+
+### ❌ Don'ts
+```yaml
+# Never commit plaintext passwords or private keys to Git
+# Avoid using 'become: yes' globally if not needed
+# Don't disable host_key_checking in production
+# Avoid hardcoding IPs; use variables or dynamic inventory
+```
+
+### Using Ansible Vault for Secrets
+```bash
+# Create encrypted vault file
+ansible-vault create secrets.yml
+
+# Edit encrypted file
+ansible-vault edit secrets.yml
+
+# Run playbook with vault password
+ansible-playbook setup_server.yaml --ask-vault-pass
+
+# OR use vault password file
+ansible-playbook setup_server.yaml --vault-password-file ~/.vault_pass
+```
+
+Example `secrets.yml`:
+```yaml
+---
+db_password: "{{ vault_db_password }}"
+api_key: "{{ vault_api_key }}"
+```
+
+---
+
+## 🤝 Contributing | অবদান রাখা
+
+Contributions are welcome! Please follow these steps:
+
+1. 🍴 Fork the repository
+2. 🌿 Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. 💾 Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. 📤 Push to the branch (`git push origin feature/amazing-feature`)
+5. 🔓 Open a Pull Request
+
+### Contribution Guidelines
+- ✅ Write clear, descriptive commit messages
+- ✅ Add comments for complex logic
+- ✅ Test playbooks in a lab environment first
+- ✅ Update documentation for new features
+- ✅ Follow YAML best practices (indentation, quotes, etc.)
+
+---
+
+## 👨‍💻 Author 
+
+<div align="center">
+
+**Sumon Paul**  
+🔧 DevOps Engineer | Cloud & Infrastructure Automation  
+🌐 [GitHub](https://github.com/SumonPaul18) • 💼 [LinkedIn](#) • ✉️ [Email](#)
+
+*Building scalable infrastructure with code, one playbook at a time.*  
+
+</div>
+
+---
