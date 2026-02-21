@@ -272,22 +272,17 @@ ansible-playbook -i inventory.ini setup_server.yaml --limit 192.168.0.63
 
 After running `setup_server.yaml`, verify:
 
-  
 | Check | Command | Expected Result |
-
 |-------|---------|----------------|
-
 | SSH Access | `ssh cloud3@192.168.0.63` | Login without password |
-
 | Sudo Access | `sudo whoami` | Returns `root` |
-
 | Firewall | `sudo ufw status` | `Status: active`, `OpenSSH ALLOW` |
-
 | Tools Installed | `which htop curl git` | Paths returned for each |
-
 | SSH Config | `sudo grep -E "PermitRootLogin|PasswordAuth" /etc/ssh/sshd_config` | `PermitRootLogin no`, `PasswordAuthentication yes` (or `no` if hardened) |
 
 ---
+
+
 
 ```bash
 # Check if htop is installed
