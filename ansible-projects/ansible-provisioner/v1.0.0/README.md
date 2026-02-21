@@ -280,30 +280,33 @@ After running `setup_server.yaml`, verify:
 | Tools Installed | `which htop curl git` | Paths returned for each |
 | SSH Config | `sudo grep -E "PermitRootLogin|PasswordAuth" /etc/ssh/sshd_config` | `PermitRootLogin no`, `PasswordAuthentication yes` (or `no` if hardened) |
 
----
+#### Another way to verify
 
-
-
-```bash
-# Check if htop is installed
+Check if htop is installed
+```
 ansible target_servers -a "which htop"
-
-# Check SSH service status
+```
+Check SSH service status
+```
 ansible target_servers -a "systemctl status ssh"
-
-# Check UFW status
+```
+Check UFW status
+```
 ansible target_servers -a "ufw status verbose"
-
-# Verify sudo access for user
+```
+Verify sudo access for user
+```
 ansible target_servers -a "sudo whoami" -b
-
 ```
 
 ---
-## ⚙️ Configuration Guide | কনফিগারেশন গাইড
+## ⚙️ Configuration Guide
 
 ### 🔧 Customizing Variables
 Edit `setup_server.yaml` vars section:
+```
+nano setup_server.yaml
+```
 ```yaml
 vars:
   target_user: cloud3              # Change to your desired username
@@ -312,6 +315,9 @@ vars:
 
 ### 🔐 SSH Key Configuration
 If using a custom SSH key:
+```
+nano inventory.ini
+```
 ```ini
 # In inventory.ini
 192.168.0.63 ansible_user=cloud3 ansible_ssh_private_key_file=~/.ssh/custom_key
@@ -355,9 +361,12 @@ ansible-playbook setup_server.yaml --start-at-task="Configure UFW"
 
 ---
 
-## 🧪 Usage Examples | ব্যবহারের উদাহরণ
+## 🧪 Usage Examples
 
 ### Example 1: Install a New Package
+```
+nano setup_server.yaml
+```
 ```yaml
 # Add to setup_server.yaml or create new playbook
 - name: Install docker.io
@@ -405,8 +414,7 @@ ansible target_servers -m setup | grep -i ansible_os_family
 
 ---
 
-## 🛠️ Troubleshooting | সমস্যা সমাধান
-
+## 🛠️ Troubleshooting 
 | Issue | Possible Cause | Solution |
 |-------|---------------|----------|
 | ❌ `UNREACHABLE!` | SSH connection failed | Verify IP, user, SSH key, and firewall rules |
@@ -447,7 +455,7 @@ ansible-playbook setup_server.yaml --limit 192.168.0.63
 
 ---
 
-## 🔒 Security Best Practices | নিরাপত্তা নির্দেশিকা
+## 🔒 Security Best Practices
 
 ### ✅ Do's
 ```yaml
@@ -490,7 +498,7 @@ api_key: "{{ vault_api_key }}"
 
 ---
 
-## 🤝 Contributing | অবদান রাখা
+## 🤝 Contributing 
 
 Contributions are welcome! Please follow these steps:
 
